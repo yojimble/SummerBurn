@@ -70,7 +70,7 @@ const Index = () => {
         )}
         <p className="text-muted-foreground max-w-lg mx-auto mb-10 text-sm">
           A real physical CD swap, coordinated on Nostr. Make your mix, burn three copies,
-          post them to strangers. Receive CDs in return. Share your tracklist and artwork here.
+          post them to plebs. Receive CDs in return. Share your tracklist and artwork here.
         </p>
         <RSVPButton />
       </section>

@@ -1,4 +1,5 @@
 import { useSeoMeta } from '@unhead/react';
+import { Link } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { ZapButton } from '@/components/ZapButton';
 import { HASHTAG, EVENT_START_DATE } from '@/lib/summerBurn';
@@ -170,9 +171,11 @@ const FAQ = () => {
             q="I still have questions."
             a={
               <>
-                Post on Nostr with{' '}
-                <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">#{HASHTAG}</code>{' '}
-                — you'll find other Burners there who'll be happy to help.
+                Head to the{' '}
+                <Link to="/forum" className="underline underline-offset-2 hover:text-foreground">
+                  forum
+                </Link>{' '}
+                and ask — other Burners there will be happy to help.
               </>
             }
           />
