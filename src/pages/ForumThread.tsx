@@ -4,6 +4,7 @@ import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
 import { ReplyForm } from '@/components/ReplyForm';
+import { NewThreadDialog } from '@/components/NewThreadDialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,7 @@ function timeAgo(ts: number): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function PostBlock({ event, isRoot = false }: { event: NostrEvent; isRoot?: boolean }) {
+function PostBlock({ event, isRoot = false, canQuote = false }: { event: NostrEvent; isRoot?: boolean; canQuote?: boolean }) {
   const { data } = useAuthor(event.pubkey);
   const name =
     data?.metadata?.display_name ??
@@ -44,6 +45,11 @@ function PostBlock({ event, isRoot = false }: { event: NostrEvent; isRoot?: bool
           <span className="text-xs text-muted-foreground">{timeAgo(event.created_at)}</span>
         </div>
         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{event.content}</p>
+        {canQuote && (
+          <div className="-ml-3 -mt-1">
+            <NewThreadDialog quoting={event} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -105,7 +111,7 @@ const ForumThread = () => {
               )}
 
               {/* Root post */}
-              <PostBlock event={data.root} isRoot />
+              <PostBlock event={data.root} isRoot canQuote={!!isRsvped} />
 
               {/* Replies */}
               {data.replies.length > 0 && (
@@ -114,7 +120,7 @@ const ForumThread = () => {
                     {data.replies.length} {data.replies.length === 1 ? 'reply' : 'replies'}
                   </p>
                   {data.replies.map(reply => (
-                    <PostBlock key={reply.id} event={reply} />
+                    <PostBlock key={reply.id} event={reply} canQuote={!!isRsvped} />
                   ))}
                 </div>
               )}

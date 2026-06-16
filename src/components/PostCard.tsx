@@ -1,6 +1,14 @@
+import { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { LikeButton } from '@/components/LikeButton';
+import { ZapButton } from '@/components/ZapButton';
+import { ReplyForm } from '@/components/ReplyForm';
 import { useAuthor } from '@/hooks/useAuthor';
+import { useThread } from '@/hooks/useThread';
+import { useRSVPs } from '@/hooks/useRSVPs';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 
@@ -51,13 +59,42 @@ function timeAgo(ts: number): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-export function PostCard({ event }: { event: NostrEvent }) {
+function ReplyBlock({ event }: { event: NostrEvent }) {
   const { data } = useAuthor(event.pubkey);
   const name =
     data?.metadata?.display_name ??
     data?.metadata?.name ??
     nip19.npubEncode(event.pubkey).slice(0, 12) + '…';
+
+  return (
+    <div className="flex gap-2 pl-4 border-l-2 border-border">
+      <Avatar className="h-6 w-6 shrink-0">
+        <AvatarImage src={data?.metadata?.picture} alt={name} />
+        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+          {name.slice(0, 2).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold">{name} <span className="text-muted-foreground font-normal">· {timeAgo(event.created_at)}</span></p>
+        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{event.content}</p>
+      </div>
+    </div>
+  );
+}
+
+export function PostCard({ event }: { event: NostrEvent }) {
+  const { data } = useAuthor(event.pubkey);
+  const { user } = useCurrentUser();
+  const { data: rsvps } = useRSVPs();
+  const [showReplies, setShowReplies] = useState(false);
+  const { data: thread } = useThread(showReplies ? event.id : '');
+
+  const name =
+    data?.metadata?.display_name ??
+    data?.metadata?.name ??
+    nip19.npubEncode(event.pubkey).slice(0, 12) + '…';
   const picture = data?.metadata?.picture;
+  const isRsvped = !!(user && rsvps?.pubkeys.has(user.pubkey));
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -75,10 +112,34 @@ export function PostCard({ event }: { event: NostrEvent }) {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pb-4">
+      <CardContent className="px-4 pb-4 space-y-3">
         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
           {renderContent(event.content)}
         </p>
+
+        <div className="flex items-center gap-1 -mx-2">
+          <LikeButton event={event} />
+          <Button variant="ghost" size="sm" onClick={() => setShowReplies(v => !v)}>
+            💬 {thread?.replies.length ?? (showReplies ? 0 : 'Reply')}
+          </Button>
+          <ZapButton pubkey={event.pubkey} label={name} event={event} />
+        </div>
+
+        {showReplies && (
+          <div className="space-y-3 pt-2 border-t border-border">
+            {thread?.replies.map(reply => (
+              <ReplyBlock key={reply.id} event={reply} />
+            ))}
+
+            {isRsvped ? (
+              <ReplyForm root={event} />
+            ) : user ? (
+              <p className="text-xs text-muted-foreground">RSVP to join the conversation.</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Log in and RSVP to reply.</p>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

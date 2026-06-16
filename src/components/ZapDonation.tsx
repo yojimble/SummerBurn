@@ -44,8 +44,7 @@ export function ZapDonation() {
 
       // Build a NIP-57 zap request event
       const zapRequestEvent = makeZapRequest({
-        profile: ORGANIZER_PUBKEY,
-        event: null,
+        pubkey: ORGANIZER_PUBKEY,
         amount: effectiveAmount,
         relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
         comment: 'Bitcoin Summer Burn 2026 — postage contribution ⚡',

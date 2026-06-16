@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
@@ -15,6 +16,7 @@ export function ReplyForm({ root }: ReplyFormProps) {
   const { user } = useCurrentUser();
   const [content, setContent] = useState('');
   const { mutateAsync: publish, isPending } = useNostrPublish();
+  const queryClient = useQueryClient();
 
   if (!user) return null;
 
@@ -30,6 +32,7 @@ export function ReplyForm({ root }: ReplyFormProps) {
           ['t', HASHTAG],
         ],
       });
+      queryClient.invalidateQueries({ queryKey: ['summerburn', 'thread', root.id] });
       toast({ title: 'Reply posted!' });
       setContent('');
     } catch {

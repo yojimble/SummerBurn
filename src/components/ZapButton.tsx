@@ -7,15 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
+import type { NostrEvent } from '@nostrify/nostrify';
 
 const PRESET_AMOUNTS = [1000, 2000, 5000];
 
 interface ZapButtonProps {
   pubkey: string; // hex pubkey
   label: string;
+  /** When zapping a specific note rather than just the profile. */
+  event?: NostrEvent;
 }
 
-export function ZapButton({ pubkey, label }: ZapButtonProps) {
+export function ZapButton({ pubkey, label, event }: ZapButtonProps) {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
 
@@ -55,13 +58,21 @@ export function ZapButton({ pubkey, label }: ZapButtonProps) {
       const zapEndpoint = await getZapEndpoint(events[0]);
       if (!zapEndpoint) throw new Error('No Lightning address on this profile');
 
-      const zapRequest = makeZapRequest({
-        profile: pubkey,
-        event: null,
-        amount,
-        relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
-        comment: `⚡ Zapped via Bitcoin Summer Burn 2026`,
-      });
+      const zapRequest = makeZapRequest(
+        event
+          ? {
+              event,
+              amount,
+              relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
+              comment: `⚡ Zapped via Bitcoin Summer Burn 2026`,
+            }
+          : {
+              pubkey,
+              amount,
+              relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
+              comment: `⚡ Zapped via Bitcoin Summer Burn 2026`,
+            },
+      );
 
       let signedZapRequest: string;
       if (user) {

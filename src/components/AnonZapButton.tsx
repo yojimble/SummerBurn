@@ -60,8 +60,7 @@ export function AnonZapButton({ anonPubkey, label }: AnonZapButtonProps) {
       if (!zapEndpoint) throw new Error('No Lightning address on this profile');
 
       const zapRequest = makeZapRequest({
-        profile: anonPubkey,
-        event: null,
+        pubkey: anonPubkey,
         amount,
         relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
         comment: `Bitcoin Summer Burn 2026 — thanks for the postage ⚡`,
