@@ -77,7 +77,10 @@ const NostrProvider: React.FC<NostrProviderProps> = (props) => {
 
       return [...allRelays];
     },
-    eoseTimeout: 200,
+    // Wait this long after the fastest relay's EOSE for the others to catch
+    // up, before giving up on them. Too short and events that only live on
+    // a slower relay get silently dropped from query results.
+    eoseTimeout: 2000,
   }));
 
   // Derive the current signer from the active login. This mirrors the

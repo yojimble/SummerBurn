@@ -13,14 +13,14 @@ export function useAddressDMs(
 ) {
   return useQuery({
     queryKey: ['summerburn', 'address-dms', anonPubkey ?? '', senderAnonPubkeys.join(',')],
-    queryFn: async (c) => {
+    queryFn: async () => {
       if (!anonPubkey || !anonNsecHex || !senderAnonPubkeys.length) return {};
 
       const pool = new SimplePool();
       const wraps = await pool.querySync(
         DM_RELAYS,
         { kinds: [1059], '#p': [anonPubkey], limit: 50 },
-        { signal: AbortSignal.any([c.signal, AbortSignal.timeout(8000)]) },
+        { maxWait: 8000 },
       );
       pool.close(DM_RELAYS);
 
