@@ -26,6 +26,14 @@ export const CALENDAR_EVENT_COORDINATE = '31923:6a400414dbd303a27592a2d68a724ea6
 // The organiser's Nostr pubkey (hex).
 export const ORGANIZER_PUBKEY = '6a400414dbd303a27592a2d68a724ea690e6fa0c365358e32cd1a56c93a5abb5';
 
+// Whether a user can post in the feed/forum: either RSVPed, or the organiser
+// (who needs to be able to post announcements without RSVPing).
+export function isPermittedPoster(pubkey: string | undefined, rsvpedPubkeys: Set<string> | undefined): boolean {
+  if (!pubkey) return false;
+  if (pubkey === ORGANIZER_PUBKEY) return true;
+  return !!rsvpedPubkeys?.has(pubkey);
+}
+
 // Custom event kinds
 // kind 31926: organiser publishes one per sender, NIP-44 encrypted to sender's pubkey.
 //   content: JSON { recipients: [anonPubkey1, anonPubkey2, anonPubkey3] }
@@ -48,6 +56,12 @@ export const KIND_POSTAGE_COST = 31928;
 //   content: Blossom image URL
 export const KIND_POSTAGE_RECEIPT = 31929;
 
+// NIP-99 classified listing, used for "publish your CD" in Account.
+// One listing per user, addressable via (kind, pubkey, CD_LISTING_D_TAG).
+// A "status" tag of "active" or "inactive" controls visibility in the gallery.
+export const KIND_CD_LISTING = 30402;
+export const CD_LISTING_D_TAG = 'summerburn2026-cd';
+
 // Derives a deterministic anonymous pubkey for a recipient.
 // The organiser can re-derive the private key from the recipient's real pubkey to read DMs.
 // Derivation: sha256("summerburn2026:" + recipientPubkey) → use as secp256k1 privkey.
@@ -55,8 +69,5 @@ export async function deriveAnonPubkey(recipientPubkey: string): Promise<string>
   const { getPublicKey } = await import('nostr-tools');
   const data = new TextEncoder().encode(`summerburn2026:${recipientPubkey}`);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const privkeyHex = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  return getPublicKey(privkeyHex);
+  return getPublicKey(new Uint8Array(hashBuffer));
 }
