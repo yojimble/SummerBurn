@@ -1,8 +1,10 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
-import { HASHTAG } from '@/lib/summerBurn';
+import type { NostrFilter } from '@nostrify/nostrify';
+import { FORUM_TAG, LEGACY_FORUM_THREAD_IDS } from '@/lib/summerBurn';
 
-// Fetches root-level forum threads: kind 1 with the hashtag and no `e` tag (not a reply).
+// Fetches root-level forum threads: kind 1 with the forum marker tag and no `e` tag (not a reply),
+// plus any legacy threads posted before the forum marker tag existed.
 export function useThreads() {
   const { nostr } = useNostr();
 
@@ -10,10 +12,11 @@ export function useThreads() {
     queryKey: ['summerburn', 'threads'],
     queryFn: async (c) => {
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
-      const events = await nostr.query(
-        [{ kinds: [1], '#t': [HASHTAG], limit: 200 }],
-        { signal },
-      );
+      const filters: NostrFilter[] = [{ kinds: [1], '#t': [FORUM_TAG], limit: 200 }];
+      if (LEGACY_FORUM_THREAD_IDS.length > 0) {
+        filters.push({ kinds: [1], ids: LEGACY_FORUM_THREAD_IDS });
+      }
+      const events = await nostr.query(filters, { signal });
       // Root posts have no `e` tag
       return events
         .filter(e => !e.tags.some(t => t[0] === 'e'))

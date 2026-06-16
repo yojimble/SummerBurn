@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { toast } from '@/hooks/useToast';
-import { HASHTAG } from '@/lib/summerBurn';
+import { HASHTAG, FORUM_TAG } from '@/lib/summerBurn';
 
 export function NewThreadDialog() {
   const [open, setOpen] = useState(false);
@@ -16,7 +16,7 @@ export function NewThreadDialog() {
   const handlePost = async () => {
     if (!content.trim()) return;
     try {
-      const tags: string[][] = [['t', HASHTAG]];
+      const tags: string[][] = [['t', HASHTAG], ['t', FORUM_TAG]];
       if (subject.trim()) tags.push(['subject', subject.trim()]);
 
       await publish({ kind: 1, content: content.trim(), tags });

@@ -1,5 +1,15 @@
 export const HASHTAG = 'summerburn2026';
 
+// Marker tag on forum thread root posts, distinguishing them from regular
+// feed posts (both use the `#t` HASHTAG above and have no `e` tag).
+export const FORUM_TAG = 'summerburn2026-forum';
+
+// Forum threads posted before FORUM_TAG existed, kept visible in the forum
+// by id since they can't be retroactively tagged.
+export const LEGACY_FORUM_THREAD_IDS = [
+  'bd235e754903d911199e933d744914d096d954be76efb6b5b76f2397e5fe7db2',
+];
+
 export const DM_RELAYS = [
   'wss://nos.lol',
   'wss://nostr.mom',

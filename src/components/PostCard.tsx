@@ -4,6 +4,43 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 
+const URL_REGEX = /https?:\/\/\S+/g;
+const IMAGE_EXT_REGEX = /\.(png|jpe?g|gif|webp|avif)(\?\S*)?$/i;
+
+function renderContent(content: string) {
+  const parts = content.split(URL_REGEX);
+  const urls = content.match(URL_REGEX) ?? [];
+
+  return parts.flatMap((part, i) => {
+    const url = urls[i];
+    if (!url) return [part];
+    if (IMAGE_EXT_REGEX.test(url)) {
+      return [
+        part,
+        <img
+          key={i}
+          src={url}
+          alt=""
+          className="mt-2 rounded-md max-h-96 w-auto"
+          loading="lazy"
+        />,
+      ];
+    }
+    return [
+      part,
+      <a
+        key={i}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline underline-offset-2 hover:text-foreground"
+      >
+        {url}
+      </a>,
+    ];
+  });
+}
+
 function timeAgo(ts: number): string {
   const s = Math.floor(Date.now() / 1000 - ts);
   if (s < 60) return `${s}s ago`;
@@ -40,7 +77,7 @@ export function PostCard({ event }: { event: NostrEvent }) {
       </CardHeader>
       <CardContent className="px-4 pb-4">
         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-          {event.content}
+          {renderContent(event.content)}
         </p>
       </CardContent>
     </Card>
