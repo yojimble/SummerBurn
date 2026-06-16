@@ -42,7 +42,7 @@ choose to reveal themselves.
 
 ## Social features
 
-The swap isn't just a matching algorithm — there's a small social layer to keep
+The swap isn't just a matching algorithm — there's a full social layer to keep
 participants engaged while they wait for the post to arrive:
 
 - **Feed** — a community feed of every post tagged with the event hashtag from RSVPed
