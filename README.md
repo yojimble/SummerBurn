@@ -17,24 +17,24 @@ The hard problem in a postal swap is letting strangers exchange addresses withou
 (including the organiser) building a permanent map of "real identity → home address."
 This app handles that in a few layers:
 
-- **Real identity, only for sign-up.** Participants RSVP with their actual Nostr account —
-  that's the only place their real pubkey is used.
-- **Disposable anon keypairs.** From the Account page, each participant generates a
-  one-off Nostr keypair that exists only for this swap, stored locally in their browser.
-  This anon key is what actually sends and receives postal addresses — never the
-  participant's real account.
-- **Encrypted matching.** Once sign-ups close, the organiser runs the matching script,
-  which randomly assigns each participant three recipients (and three senders) and
-  publishes the result as a NIP-44 encrypted event, addressed to that participant's real
-  pubkey and readable by no one else.
-- **Gift-wrapped address exchange.** The match tells each participant which *anon pubkeys*
-  they're sending to and receiving from. Addresses are then exchanged directly between
-  anon keypairs as NIP-17 private messages, wrapped per NIP-59 — so the message itself,
-  its metadata, and even who's talking to whom are hidden from relays and from anyone
-  except the two anon keys involved.
-- **Dispatch & proof of postage.** Once an address arrives, the sender posts their item and
-  can upload a proof-of-postage receipt — signed by their anon identity, not their real
-  account — visible to the recipient as reassurance that something's on the way.
+- **Real identity is used for everything social.** RSVPing, posting/replying/quoting in the
+  feed and forum, uploading gallery art, publishing your gift as a listing, marking it as
+  posted, and zapping — all signed with your real Nostr account. None of that needs to be
+  anonymous, and being identifiable is what makes the social side fun.
+- **The anon identity is used for exactly two things: addresses, and optional feedback.**
+  From the Account page, each participant generates a disposable, one-off Nostr keypair
+  that exists only for this swap, stored locally in their browser. It's used only to:
+  1. **Exchange postal addresses.** Send/receive your address as a NIP-17 private message,
+     wrapped per NIP-59, directly between anon keypairs — never your real account.
+  2. **Leave optional anonymous feedback.** A sender can upload a proof-of-postage receipt
+     image signed by their anon key, so the recipient gets reassurance without learning
+     who sent it.
+- **Encrypted matching links the two.** Once sign-ups close, the organiser runs the
+  matching script, which randomly assigns each participant three recipients and three
+  senders by their *anon* pubkeys, and publishes the result as a NIP-44 encrypted event
+  addressed to that participant's real pubkey, readable by no one else. That match event
+  is the only place a real identity and an anon pubkey are linked together — and only the
+  organiser and that one participant ever see it.
 
 End to end: the organiser knows *who's participating*, but not *who is sending what to
 whom*. Recipients and senders only ever see each other as anonymous pubkeys, unless they
