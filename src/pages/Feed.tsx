@@ -5,7 +5,7 @@ import { useFeed } from '@/hooks/useFeed';
 import { useRSVPs } from '@/hooks/useRSVPs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { HASHTAG } from '@/lib/summerBurn';
+import { HASHTAG, ORGANIZER_PUBKEY } from '@/lib/summerBurn';
 
 const Feed = () => {
   useSeoMeta({
@@ -18,10 +18,10 @@ const Feed = () => {
 
   const isLoading = postsLoading || rsvpsLoading;
 
-  // Only show posts from RSVPed users
+  // Only show posts from RSVPed users (plus the organiser, who isn't RSVPed)
   const posts =
     rsvps && rsvps.pubkeys.size > 0
-      ? (allPosts ?? []).filter((p) => rsvps.pubkeys.has(p.pubkey))
+      ? (allPosts ?? []).filter((p) => rsvps.pubkeys.has(p.pubkey) || p.pubkey === ORGANIZER_PUBKEY)
       : (allPosts ?? []);
 
   return (

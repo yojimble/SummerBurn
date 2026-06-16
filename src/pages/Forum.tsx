@@ -11,6 +11,7 @@ import { useThreads } from '@/hooks/useThreads';
 import { useRSVPs } from '@/hooks/useRSVPs';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { isPermittedPoster, ORGANIZER_PUBKEY } from '@/lib/summerBurn';
 
 function timeAgo(ts: number): string {
   const s = Math.floor(Date.now() / 1000 - ts);
@@ -72,10 +73,10 @@ const Forum = () => {
 
   const posts =
     rsvps && rsvps.pubkeys.size > 0
-      ? (threads ?? []).filter(e => rsvps.pubkeys.has(e.pubkey))
+      ? (threads ?? []).filter(e => rsvps.pubkeys.has(e.pubkey) || e.pubkey === ORGANIZER_PUBKEY)
       : (threads ?? []);
 
-  const isRsvped = user && rsvps?.pubkeys.has(user.pubkey);
+  const isRsvped = isPermittedPoster(user?.pubkey, rsvps?.pubkeys);
 
   return (
     <Layout>

@@ -8,9 +8,9 @@ import { useNostr } from '@nostrify/react';
 import { Layout } from '@/components/Layout';
 import { AnonIdentityCard } from '@/components/AnonIdentityCard';
 import { CDPostedButton } from '@/components/CDPostedButton';
-import { ZapDonation } from '@/components/ZapDonation';
 import { AnonZapButton } from '@/components/AnonZapButton';
 import { PostageReceiptUpload } from '@/components/PostageReceiptUpload';
+import { PublishCDCard } from '@/components/PublishCDCard';
 import { RSVPButton } from '@/components/RSVPButton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -237,8 +237,8 @@ const Account = () => {
           </CardContent>
         </Card>
 
-        {/* Zap donation */}
-        <ZapDonation />
+        {/* Publish CD listing */}
+        <PublishCDCard />
 
       </div>
     </Layout>
