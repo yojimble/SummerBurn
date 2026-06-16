@@ -1,8 +1,10 @@
 import { useSeoMeta } from '@unhead/react';
 import { Layout } from '@/components/Layout';
 import { GalleryCard } from '@/components/GalleryCard';
+import { CDListingCard } from '@/components/CDListingCard';
 import { UploadImageDialog } from '@/components/UploadImageDialog';
 import { useGallery } from '@/hooks/useGallery';
+import { useCDListings } from '@/hooks/useCDListings';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -13,6 +15,7 @@ const Gallery = () => {
   });
 
   const { data: images, isLoading } = useGallery();
+  const { data: cdListings, isLoading: listingsLoading } = useCDListings();
   const { user } = useCurrentUser();
 
   return (
@@ -33,6 +36,27 @@ const Gallery = () => {
             Log in with Nostr to upload your cover art.
           </div>
         )}
+
+        {(listingsLoading || (cdListings && cdListings.length > 0)) && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold mb-3">CDs</h2>
+            {listingsLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-lg" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {cdListings!.map((listing) => (
+                  <CDListingCard key={listing.id} event={listing} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <h2 className="text-lg font-semibold mb-3">Cover Art</h2>
 
         {isLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

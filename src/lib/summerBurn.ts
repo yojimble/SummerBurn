@@ -58,7 +58,8 @@ export const KIND_POSTAGE_RECEIPT = 31929;
 
 // NIP-99 classified listing, used for "publish your CD" in Account.
 // One listing per user, addressable via (kind, pubkey, CD_LISTING_D_TAG).
-// A "status" tag of "active" or "inactive" controls visibility in the gallery.
+// A "status" tag of "active" marks it as for-sale (offering extra copies);
+// when absent, it's shown in the Gallery only.
 export const KIND_CD_LISTING = 30402;
 export const CD_LISTING_D_TAG = 'summerburn2026-cd';
 

@@ -1,5 +1,8 @@
 import { nip19 } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
+import { Layout } from '@/components/Layout';
+import { CDListingDetail } from '@/components/CDListingDetail';
+import { KIND_CD_LISTING } from '@/lib/summerBurn';
 import NotFound from './NotFound';
 
 export function NIP19Page() {
@@ -33,7 +36,13 @@ export function NIP19Page() {
       return <div>Event placeholder</div>;
 
     case 'naddr':
-      // AI agent should implement addressable event view here
+      if (decoded.data.kind === KIND_CD_LISTING) {
+        return (
+          <Layout>
+            <CDListingDetail pubkey={decoded.data.pubkey} />
+          </Layout>
+        );
+      }
       return <div>Addressable event placeholder</div>;
 
     default:
