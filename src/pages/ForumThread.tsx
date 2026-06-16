@@ -1,10 +1,10 @@
+import { useRef, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
 import { ReplyForm } from '@/components/ReplyForm';
-import { NewThreadDialog } from '@/components/NewThreadDialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { useThread } from '@/hooks/useThread';
 import { useRSVPs } from '@/hooks/useRSVPs';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { isPermittedPoster } from '@/lib/summerBurn';
 
 function timeAgo(ts: number): string {
   const s = Math.floor(Date.now() / 1000 - ts);
@@ -24,7 +25,12 @@ function timeAgo(ts: number): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function PostBlock({ event, isRoot = false, canQuote = false }: { event: NostrEvent; isRoot?: boolean; canQuote?: boolean }) {
+function PostBlock({ event, isRoot = false, canQuote = false, onQuote }: {
+  event: NostrEvent;
+  isRoot?: boolean;
+  canQuote?: boolean;
+  onQuote?: (event: NostrEvent) => void;
+}) {
   const { data } = useAuthor(event.pubkey);
   const name =
     data?.metadata?.display_name ??
@@ -46,9 +52,9 @@ function PostBlock({ event, isRoot = false, canQuote = false }: { event: NostrEv
         </div>
         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{event.content}</p>
         {canQuote && (
-          <div className="-ml-3 -mt-1">
-            <NewThreadDialog quoting={event} />
-          </div>
+          <Button variant="ghost" size="sm" className="-ml-3 -mt-1" onClick={() => onQuote?.(event)}>
+            ↩ Quote
+          </Button>
         )}
       </div>
     </div>
@@ -62,6 +68,8 @@ const ForumThread = () => {
   const navigate = useNavigate();
   const { user } = useCurrentUser();
   const { data: rsvps } = useRSVPs();
+  const [quoting, setQuoting] = useState<NostrEvent | undefined>();
+  const replyRef = useRef<HTMLDivElement>(null);
 
   const rootId = (() => {
     if (!noteId) return '';
@@ -74,8 +82,13 @@ const ForumThread = () => {
   })();
 
   const { data, isLoading } = useThread(rootId);
-  const isRsvped = user && rsvps?.pubkeys.has(user.pubkey);
+  const isRsvped = isPermittedPoster(user?.pubkey, rsvps?.pubkeys);
   const subject = data?.root?.tags.find(t => t[0] === 'subject')?.[1];
+
+  const handleQuote = (event: NostrEvent) => {
+    setQuoting(event);
+    replyRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   return (
     <Layout>
@@ -111,7 +124,7 @@ const ForumThread = () => {
               )}
 
               {/* Root post */}
-              <PostBlock event={data.root} isRoot canQuote={!!isRsvped} />
+              <PostBlock event={data.root} isRoot canQuote={!!isRsvped} onQuote={handleQuote} />
 
               {/* Replies */}
               {data.replies.length > 0 && (
@@ -120,23 +133,25 @@ const ForumThread = () => {
                     {data.replies.length} {data.replies.length === 1 ? 'reply' : 'replies'}
                   </p>
                   {data.replies.map(reply => (
-                    <PostBlock key={reply.id} event={reply} canQuote={!!isRsvped} />
+                    <PostBlock key={reply.id} event={reply} canQuote={!!isRsvped} onQuote={handleQuote} />
                   ))}
                 </div>
               )}
 
               {/* Reply form */}
-              {isRsvped ? (
-                <ReplyForm root={data.root} />
-              ) : user ? (
-                <p className="text-sm text-muted-foreground pt-4 border-t border-border">
-                  RSVP to join the conversation.
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground pt-4 border-t border-border">
-                  Log in and RSVP to reply.
-                </p>
-              )}
+              <div ref={replyRef}>
+                {isRsvped ? (
+                  <ReplyForm root={data.root} quoting={quoting} onClearQuote={() => setQuoting(undefined)} />
+                ) : user ? (
+                  <p className="text-sm text-muted-foreground pt-4 border-t border-border">
+                    RSVP to join the conversation.
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground pt-4 border-t border-border">
+                    Log in and RSVP to reply.
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
