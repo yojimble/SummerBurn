@@ -1,0 +1,111 @@
+BITCOIN SUMMER BURN 2026 — MATCHING INSTRUCTIONS
+=================================================
+
+Run this after sign-ups close (before July 21st) to match participants
+and publish their CD partner assignments.
+
+
+BEFORE YOU START
+----------------
+
+Make sure you have Node.js installed. Open a terminal and navigate to
+the project folder:
+
+  cd "path/to/Summer Burn"
+
+Install dependencies if you haven't already:
+
+  npm install
+
+
+STEP 1 — DRY RUN (do this first)
+---------------------------------
+
+Set your organiser nsec as an environment variable and run the script
+in dry run mode. This fetches all RSVPs and anon key registrations,
+decrypts the DMs, generates a random matching, and prints it to your
+screen. Nothing is published.
+
+  ORGANIZER_NSEC=nsec1... node scripts/match.mjs
+
+The script will show you:
+
+  - How many accepted RSVPs it found
+  - How many participants have registered an anon key
+  - A warning list of anyone who RSVPed but hasn't generated their
+    anon identity yet (you may want to nudge them before publishing)
+  - The full proposed matching — who sends to whom (by participant
+    number, not real identity)
+
+You can run this as many times as you like. Each run shuffles fresh.
+No data is written anywhere until you add --publish.
+
+
+STEP 2 — CHASE UP MISSING ANON KEYS
+-------------------------------------
+
+If the dry run shows people who RSVPed but haven't registered an anon
+key, DM them on Nostr and ask them to log into the site and hit
+"Generate anon identity" on their Account page. They must do this
+before you publish matches or they will be excluded.
+
+
+STEP 3 — PUBLISH
+-----------------
+
+When you're happy with the participant list and a proposed matching,
+run with --publish:
+
+  ORGANIZER_NSEC=nsec1... node scripts/match.mjs --publish
+
+The script will:
+
+  1. Fetch RSVPs and DMs again (fresh from relays)
+  2. Generate a new random matching
+  3. Publish one encrypted match event per participant to Nostr
+  4. Report success or failure for each one
+
+Each participant's match event is NIP-44 encrypted to their real Nostr
+pubkey — only they can read it. Their Account page will automatically
+show their CD partners once the events are published.
+
+
+IMPORTANT NOTES
+---------------
+
+- Your nsec never leaves your computer. It is only used locally to
+  decrypt DMs and sign match events. It is not sent anywhere.
+
+- Do not paste your nsec into a chat, email, or document. Only ever
+  type it directly into your terminal as shown above.
+
+- Each --publish run generates a NEW random matching. Do not run
+  --publish more than once or participants will receive conflicting
+  match events. The site uses the latest event per participant, so
+  a second publish would overwrite the first.
+
+- If a publish fails partway through (e.g. relay connection drops),
+  you can safely re-run --publish. Existing participants will get
+  their events overwritten with the same matching only if the shuffle
+  produces the same order — which it won't. So if you need to re-run,
+  do a dry run first to check, then publish again.
+
+- The matching uses a circular arrangement: with N participants, each
+  person sends to the next 3 and receives from the previous 3. Every
+  participant sends exactly 3 CDs and receives exactly 3 CDs.
+
+
+AFTER PUBLISHING
+----------------
+
+Once match events are published, participants will see their CD
+partners on their Account page. They will see:
+
+  - How many mystery Burners are sending them a CD (anonymous until
+    the CD arrives)
+  - The anon identities of the 3 people they are sending to, plus a
+    button to send each one their postal address
+
+Let participants know matches are live so they can log in and share
+their addresses. Give them a deadline — aim to have all addresses
+shared within a few days of July 21st so CDs can be posted promptly.

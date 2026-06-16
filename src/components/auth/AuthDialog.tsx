@@ -692,49 +692,15 @@ const AuthDialog: React.FC<AuthDialogProps> = ({ isOpen, onClose }) => {
                     Use remote signer
                   </Button>
 
-                  <Collapsible open={showMoreOptions} onOpenChange={setShowMoreOptions}>
-                    <CollapsibleTrigger className="w-full flex items-center justify-center gap-1 text-sm text-muted-foreground hover:text-foreground py-2">
-                      <span>Use secret key</span>
-                      <ChevronDown
-                        className={`w-4 h-4 transition-transform ${
-                          showMoreOptions ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="space-y-3 pt-1">
-                      <NsecLoginForm
-                        loginNsec={loginNsec}
-                        setLoginNsec={setLoginNsec}
-                        loginError={loginError}
-                        setLoginError={setLoginError}
-                        isLoggingIn={isLoggingIn}
-                        onSubmit={handleLogin}
-                        onFileChange={handleFileUpload}
-                        fileInputRef={fileInputRef}
-                      />
-                    </CollapsibleContent>
-                  </Collapsible>
                 </>
               ) : (
-                <>
-                  <NsecLoginForm
-                    loginNsec={loginNsec}
-                    setLoginNsec={setLoginNsec}
-                    loginError={loginError}
-                    setLoginError={setLoginError}
-                    isLoggingIn={isLoggingIn}
-                    onSubmit={handleLogin}
-                    onFileChange={handleFileUpload}
-                    fileInputRef={fileInputRef}
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={goToConnect}
-                    className="w-full"
-                  >
-                    Use remote signer
-                  </Button>
-                </>
+                <Button
+                  variant="outline"
+                  onClick={goToConnect}
+                  className="w-full h-12"
+                >
+                  Use remote signer
+                </Button>
               )}
 
               <button
