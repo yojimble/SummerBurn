@@ -9,6 +9,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { useThread } from '@/hooks/useThread';
 import { useRSVPs } from '@/hooks/useRSVPs';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { isPermittedPoster } from '@/lib/summerBurn';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 
@@ -94,7 +95,7 @@ export function PostCard({ event }: { event: NostrEvent }) {
     data?.metadata?.name ??
     nip19.npubEncode(event.pubkey).slice(0, 12) + '…';
   const picture = data?.metadata?.picture;
-  const isRsvped = !!(user && rsvps?.pubkeys.has(user.pubkey));
+  const isRsvped = isPermittedPoster(user?.pubkey, rsvps?.pubkeys);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -122,7 +123,7 @@ export function PostCard({ event }: { event: NostrEvent }) {
           <Button variant="ghost" size="sm" onClick={() => setShowReplies(v => !v)}>
             💬 {thread?.replies.length ?? (showReplies ? 0 : 'Reply')}
           </Button>
-          <ZapButton pubkey={event.pubkey} label={name} event={event} />
+          <ZapButton pubkey={event.pubkey} label={name} event={event} compact />
         </div>
 
         {showReplies && (

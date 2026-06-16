@@ -97,7 +97,7 @@ const Index = () => {
             <div className="text-4xl">📬</div>
             <h3 className="font-semibold">3. Post them out</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Send your CDs to your three recipients. Try to get them in the post within two weeks of July 21st.
+              Send CDs to three anon recipients. Try to get them in the post within two weeks of July 21st.
             </p>
           </div>
           <div className="space-y-3">

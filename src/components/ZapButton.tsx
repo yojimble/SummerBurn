@@ -4,29 +4,40 @@ import { getZapEndpoint, makeZapRequest } from 'nostr-tools/nip57';
 import QRCode from 'qrcode';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import type { NostrEvent } from '@nostrify/nostrify';
 
-const PRESET_AMOUNTS = [1000, 2000, 5000];
+const PRESET_AMOUNTS = [210, 1000, 2000, 5000];
+
+function satsLabel(sats: number) {
+  if (sats >= 1000) return `${sats / 1000}k`;
+  return String(sats);
+}
 
 interface ZapButtonProps {
   pubkey: string; // hex pubkey
   label: string;
   /** When zapping a specific note rather than just the profile. */
   event?: NostrEvent;
+  /** Show just the zap icon, without the person's name. */
+  compact?: boolean;
 }
 
-export function ZapButton({ pubkey, label, event }: ZapButtonProps) {
+export function ZapButton({ pubkey, label, event, compact }: ZapButtonProps) {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
 
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(2000);
+  const [customAmount, setCustomAmount] = useState('');
   const [isPending, setIsPending] = useState(false);
   const [invoice, setInvoice] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  const effectiveAmount = customAmount ? parseInt(customAmount) : amount;
 
   const { data: hasLightning } = useQuery({
     queryKey: ['profile-ln', pubkey],
@@ -47,6 +58,7 @@ export function ZapButton({ pubkey, label, event }: ZapButtonProps) {
   });
 
   const handleZap = async () => {
+    if (!effectiveAmount || effectiveAmount < 1) return;
     setIsPending(true);
     try {
       const events = await nostr.query(
@@ -62,13 +74,13 @@ export function ZapButton({ pubkey, label, event }: ZapButtonProps) {
         event
           ? {
               event,
-              amount,
+              amount: effectiveAmount,
               relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
               comment: `⚡ Zapped via Bitcoin Summer Burn 2026`,
             }
           : {
               pubkey,
-              amount,
+              amount: effectiveAmount,
               relays: ['wss://relay.damus.io', 'wss://nos.lol', 'wss://relay.nostr.band'],
               comment: `⚡ Zapped via Bitcoin Summer Burn 2026`,
             },
@@ -83,7 +95,7 @@ export function ZapButton({ pubkey, label, event }: ZapButtonProps) {
       }
 
       const url = new URL(zapEndpoint);
-      url.searchParams.set('amount', String(amount));
+      url.searchParams.set('amount', String(effectiveAmount));
       url.searchParams.set('nostr', signedZapRequest);
 
       const res = await fetch(url.toString());
@@ -122,7 +134,7 @@ export function ZapButton({ pubkey, label, event }: ZapButtonProps) {
   return (
     <>
       <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="inline-flex">
-        ⚡ Zap {label}
+        {compact ? '⚡' : `⚡ Zap ${label}`}
       </Button>
 
       <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) { setInvoice(null); setQrDataUrl(null); } }}>
@@ -137,16 +149,27 @@ export function ZapButton({ pubkey, label, event }: ZapButtonProps) {
                 {PRESET_AMOUNTS.map(sats => (
                   <Button
                     key={sats}
-                    variant={amount === sats ? 'default' : 'outline'}
+                    variant={!customAmount && amount === sats ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setAmount(sats)}
+                    onClick={() => { setAmount(sats); setCustomAmount(''); }}
                   >
-                    {sats / 1000}k sats
+                    {satsLabel(sats)} sats
                   </Button>
                 ))}
               </div>
-              <Button onClick={handleZap} disabled={isPending} className="w-full">
-                {isPending ? 'Getting invoice…' : `⚡ Zap ${amount / 1000}k sats`}
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder="Custom"
+                  value={customAmount}
+                  onChange={e => setCustomAmount(e.target.value)}
+                  className="text-sm"
+                />
+                <span className="text-sm text-muted-foreground">sats</span>
+              </div>
+              <Button onClick={handleZap} disabled={isPending || !effectiveAmount} className="w-full">
+                {isPending ? 'Getting invoice…' : `⚡ Zap ${satsLabel(effectiveAmount)} sats`}
               </Button>
             </div>
           ) : (
