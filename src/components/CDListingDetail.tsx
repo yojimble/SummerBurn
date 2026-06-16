@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ZapButton } from '@/components/ZapButton';
+import { DMSellerDialog } from '@/components/DMSellerDialog';
 import { useAuthor } from '@/hooks/useAuthor';
 import { useCDListing } from '@/hooks/useCDListing';
 import type { NostrEvent } from '@nostrify/nostrify';
@@ -49,11 +49,13 @@ export function CDListingDetail({ pubkey }: { pubkey: string }) {
   const title = getTag(listing, 'title') ?? 'Untitled CD';
   const images = getImages(listing);
   const offersExtraCopies = getTag(listing, 'status') === 'active';
+  const price = listing.tags.find(([n]) => n === 'price')?.[1];
+  const quantity = getTag(listing, 'quantity');
 
   return (
     <div className="container max-w-2xl py-8 space-y-6">
       {images.length > 0 && (
-        <Carousel className="w-full">
+        <Carousel className="w-1/2 mx-auto">
           <CarouselContent>
             {images.map((url) => (
               <CarouselItem key={url}>
@@ -91,9 +93,23 @@ export function CDListingDetail({ pubkey }: { pubkey: string }) {
 
       {offersExtraCopies && (
         <Card>
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            {name} is offering extra copies of this CD to anyone outside the swap who's happy to
-            cover postage. Zap them to say you're interested, or reach out on Nostr.
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-3 text-sm font-medium">
+              {price && (
+                <span className="text-primary">
+                  ⚡ {Number(price).toLocaleString()} sats{' '}
+                  <span className="text-muted-foreground font-normal">+ postage</span>
+                </span>
+              )}
+              {quantity && <span className="text-muted-foreground">{quantity} available</span>}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {name} is offering extra copies of this CD to anyone outside the swap.
+            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">DM to purchase</p>
+              <DMSellerDialog recipientPubkey={pubkey} recipientName={name} />
+            </div>
           </CardContent>
         </Card>
       )}
@@ -102,8 +118,6 @@ export function CDListingDetail({ pubkey }: { pubkey: string }) {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tracklist</h2>
         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">{listing.content}</p>
       </div>
-
-      <ZapButton pubkey={pubkey} label={name} />
     </div>
   );
 }

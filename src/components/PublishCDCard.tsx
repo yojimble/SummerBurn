@@ -38,6 +38,8 @@ export function PublishCDCard() {
   const [tracklist, setTracklist] = useState('');
   const [images, setImages] = useState<string[]>([]); // existing + newly-uploaded URLs
   const [offerExtraCopies, setOfferExtraCopies] = useState(false);
+  const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState('');
   const [initialized, setInitialized] = useState(false);
 
   // Prefill from the existing listing once it loads.
@@ -48,6 +50,8 @@ export function PublishCDCard() {
       setTracklist(listing.content ?? '');
       setImages(getImages(listing));
       setOfferExtraCopies(getTag(listing, 'status') === 'active');
+      setPrice(listing.tags.find(([n]) => n === 'price')?.[1] ?? '');
+      setQuantity(getTag(listing, 'quantity') ?? '');
     }
     if (!isLoading) setInitialized(true);
   }, [listing, isLoading, initialized]);
@@ -90,7 +94,11 @@ export function PublishCDCard() {
         ['published_at', publishedAt],
         ...images.map((url) => ['image', url]),
       ];
-      if (offerExtraCopies) tags.push(['status', 'active']);
+      if (offerExtraCopies) {
+        tags.push(['status', 'active']);
+        if (price.trim()) tags.push(['price', price.trim(), 'sats']);
+        if (quantity.trim()) tags.push(['quantity', quantity.trim()]);
+      }
 
       await publish({ kind: KIND_CD_LISTING, content: tracklist.trim(), tags });
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listing', user?.pubkey ?? ''] });
@@ -180,12 +188,39 @@ export function PublishCDCard() {
               <div className="space-y-0.5">
                 <Label htmlFor="cd-extra">Offer extra copies to non-swappers</Label>
                 <p className="text-xs text-muted-foreground">
-                  On: listed as for sale — people outside the swap can request a copy if they
-                  cover postage. Off: shown in the Gallery only.
+                  On: listed as for sale at the price and quantity you set below. Off: shown
+                  in the Gallery only.
                 </p>
               </div>
               <Switch id="cd-extra" checked={offerExtraCopies} onCheckedChange={setOfferExtraCopies} />
             </div>
+
+            {offerExtraCopies && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="cd-price">Price (sats)</Label>
+                  <Input
+                    id="cd-price"
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 5000"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cd-quantity">Quantity available</Label>
+                  <Input
+                    id="cd-quantity"
+                    type="number"
+                    min={0}
+                    placeholder="e.g. 3"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
 
             <Button
               className="w-full"
