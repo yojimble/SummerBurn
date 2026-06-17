@@ -19,9 +19,6 @@ export function AnonIdentityCard() {
   const [showRestore, setShowRestore] = useState(false);
   const { mutateAsync: publish, isPending } = useNostrPublish();
 
-  const [lightningAddress, setLightningAddress] = useState('');
-  const [savingLn, setSavingLn] = useState(false);
-
   const sendBackupDM = async (nsecHex: string) => {
     if (!user?.signer.nip44) return;
     const { nip19, getPublicKey } = await import('nostr-tools');
@@ -106,38 +103,6 @@ export function AnonIdentityCard() {
     }
   };
 
-  const handleSaveLightningAddress = async () => {
-    if (!anonNsecHex || !lightningAddress.trim()) return;
-    const addr = lightningAddress.trim();
-    if (!addr.includes('@')) {
-      toast({ title: 'Invalid address', description: 'Enter a Lightning address like you@getalby.com' });
-      return;
-    }
-    setSavingLn(true);
-    try {
-      const privkeyBytes = hexToBytes(anonNsecHex);
-      const event = finalizeEvent(
-        {
-          kind: 0,
-          created_at: Math.floor(Date.now() / 1000),
-          tags: [],
-          content: JSON.stringify({ lud16: addr }),
-        },
-        privkeyBytes,
-      );
-      await nostr.event(event, { signal: AbortSignal.timeout(5000) });
-      toast({
-        title: '⚡ Lightning address saved',
-        description: 'Your CD recipients can now zap your anon identity to cover your postage.',
-      });
-      setLightningAddress('');
-    } catch {
-      toast({ title: 'Failed to save', description: 'Please try again.' });
-    } finally {
-      setSavingLn(false);
-    }
-  };
-
   const handleRestore = () => {
     const input = restoreInput.trim();
     if (!input) return;
@@ -214,30 +179,6 @@ export function AnonIdentityCard() {
           check there if you ever switch devices.
         </p>
 
-        {/* Lightning address for zaps */}
-        <div className="space-y-2 pt-1 border-t border-border">
-          <p className="text-xs font-medium">⚡ Add Lightning address</p>
-          <p className="text-xs text-muted-foreground">
-            Optional — lets your recipients zap you. For maximum privacy, use a fresh
-            Lightning address not linked to your real identity.
-          </p>
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder="you@getalby.com"
-              value={lightningAddress}
-              onChange={e => setLightningAddress(e.target.value)}
-              className="text-sm"
-            />
-            <Button
-              size="sm"
-              onClick={handleSaveLightningAddress}
-              disabled={savingLn || !lightningAddress.trim()}
-            >
-              {savingLn ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </div>
 
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={handleBackup} disabled={isPending}>
