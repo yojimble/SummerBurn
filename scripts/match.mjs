@@ -4,7 +4,7 @@
  *
  * 1. Reads all RSVPs (kind 31925, status=accepted)
  * 2. Decrypts NIP-44 DMs sent to the organiser to collect each participant's anon pubkey
- * 3. Generates a random circular matching (3 copies each)
+ * 3. Generates a non-symmetric circular matching — your 3 recipients ≠ your 3 senders
  * 4. Shows a preview — dry run by default
  * 5. Publishes kind 31926 match events when run with --publish
  *
@@ -165,54 +165,29 @@ async function main() {
   }
 
   // --- Generate matching ---
-  // Shuffle randomly then divide into groups of 3.
-  // Remainder of 1 is absorbed into the last group (making it a group of 4).
-  // Remainder of 2 becomes its own pair.
+  // Circular non-symmetric assignment: shuffle all participants into a ring.
+  // Person[i] sends to [i+1, i+2, i+3] and receives from [i-1, i-2, i-3].
+  // This guarantees your senders and recipients never overlap (requires N ≥ 7).
   const shuffled = [...eligible].sort(() => Math.random() - 0.5);
   const N = shuffled.length;
 
-  // Divide into groups of 4.
-  // Remainder 1 → absorb into last group (group of 5).
-  // Remainder 2 → two groups of 3 at the end.
-  // Remainder 3 → one group of 3 at the end.
-  const groups = [];
-  let i = 0;
-  while (i < N) {
-    const remaining = N - i;
-    if (remaining === 1) {
-      // Absorb lone person into previous group
-      groups[groups.length - 1].push(...shuffled.slice(i));
-      break;
-    } else if (remaining === 2) {
-      // Split into two groups of 3 with previous group if possible, else pair
-      if (groups.length > 0 && groups[groups.length - 1].length === 4) {
-        const last = groups[groups.length - 1];
-        const moved = last.splice(last.length - 1, 1);
-        groups.push([...moved, ...shuffled.slice(i)]);
-      } else {
-        groups.push(shuffled.slice(i));
-      }
-      break;
-    } else {
-      groups.push(shuffled.slice(i, i + 4));
-      i += 4;
-    }
+  if (N < 7) {
+    console.error(`\nNeed at least 7 eligible participants for non-symmetric matching. Have ${N}.`);
+    pool.close(RELAYS);
+    return;
   }
 
-  // Within each group everyone sends to and receives from all other members
-  const matches = shuffled.map(participant => {
-    const group = groups.find(g => g.some(p => p.realPubkey === participant.realPubkey));
-    const others = group.filter(p => p.realPubkey !== participant.realPubkey).map(p => p.anonPubkey);
-    return { ...participant, sendingTo: others, receivingFrom: others };
+  const matches = shuffled.map((participant, i) => {
+    const sendingTo = [1, 2, 3].map(offset => shuffled[(i + offset) % N].anonPubkey);
+    const receivingFrom = [1, 2, 3].map(offset => shuffled[(i - offset + N) % N].anonPubkey);
+    return { ...participant, sendingTo, receivingFrom };
   });
 
-  console.log(`\n=== Proposed matching (${N} participants, ${groups.length} group${groups.length !== 1 ? 's' : ''}) ===`);
-  for (const [gi, group] of groups.entries()) {
-    console.log(`\n  Group ${gi + 1} (${group.length} people — each burns ${group.length - 1} cop${group.length - 1 === 1 ? 'y' : 'ies'}):`);
-    group.forEach(p => {
-      const npub = nip19.npubEncode(p.realPubkey);
-      console.log(`    • ${npub.slice(0, 28)}…`);
-    });
+  console.log(`\n=== Proposed matching (${N} participants, circular ring) ===`);
+  console.log('  Each person sends to 3 different people than they receive from.\n');
+  for (const [idx, m] of matches.entries()) {
+    const npub = nip19.npubEncode(m.realPubkey).slice(0, 28) + '…';
+    console.log(`  ${String(idx + 1).padStart(2)}. ${npub}  →  sends to [${(idx+1)%N+1}, ${(idx+2)%N+1}, ${(idx+3)%N+1}]`);
   }
 
   if (!PUBLISH) {

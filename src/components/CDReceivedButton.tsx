@@ -7,7 +7,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { toast } from '@/hooks/useToast';
-import { SWAP_STATUS_EVENT_ID, REACTION_CD_POSTED, ORGANIZER_PUBKEY } from '@/lib/summerBurn';
+import { SWAP_STATUS_EVENT_ID, REACTION_CD_RECEIVED, ORGANIZER_PUBKEY } from '@/lib/summerBurn';
 import { hexToBytes } from '@/lib/utils';
 
 function IdentityToggle({ anon, onChange, disabled }: { anon: boolean; onChange: (v: boolean) => void; disabled: boolean }) {
@@ -31,7 +31,7 @@ const reactionTags = [
   ['k', '1'],
 ];
 
-export function CDPostedButton() {
+export function CDReceivedButton() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const { mutateAsync: publish, isPending: isPublishing } = useNostrPublish();
@@ -43,7 +43,7 @@ export function CDPostedButton() {
   const isPending = isPublishing || isPosting;
 
   const { data: reaction, isLoading } = useQuery({
-    queryKey: ['summerburn', 'cd-posted', user?.pubkey ?? '', anonPubkey ?? ''],
+    queryKey: ['summerburn', 'cd-received', user?.pubkey ?? '', anonPubkey ?? ''],
     queryFn: async (c) => {
       if (!user) return null;
       const signal = AbortSignal.any([c.signal, AbortSignal.timeout(3000)]);
@@ -52,7 +52,7 @@ export function CDPostedButton() {
         [{ kinds: [7], authors, '#e': [SWAP_STATUS_EVENT_ID] }],
         { signal },
       );
-      return events.find((e) => e.content === REACTION_CD_POSTED) ?? null;
+      return events.find((e) => e.content === REACTION_CD_RECEIVED) ?? null;
     },
     enabled: !!user,
   });
@@ -66,9 +66,9 @@ export function CDPostedButton() {
     const wasAnon = anonPubkey && reaction.pubkey === anonPubkey;
     return (
       <div className="flex items-center gap-3">
-        <span className="text-2xl">📬</span>
+        <span className="text-2xl">📀</span>
         <div>
-          <p className="font-semibold text-green-700 dark:text-green-400">CDs posted!</p>
+          <p className="font-semibold text-green-700 dark:text-green-400">CDs received!</p>
           <p className="text-xs text-muted-foreground">Confirmed {date} · {wasAnon ? '🥷 anonymously' : '🌍 publicly'}</p>
         </div>
       </div>
@@ -81,15 +81,15 @@ export function CDPostedButton() {
         if (!anonNsecHex) { toast({ title: 'Generate your anon identity first.' }); return; }
         setIsPosting(true);
         const event = finalizeEvent(
-          { kind: 7, content: REACTION_CD_POSTED, tags: reactionTags, created_at: Math.floor(Date.now() / 1000) },
+          { kind: 7, content: REACTION_CD_RECEIVED, tags: reactionTags, created_at: Math.floor(Date.now() / 1000) },
           hexToBytes(anonNsecHex),
         );
         await nostr.event(event, { signal: AbortSignal.timeout(5000) });
       } else {
-        await publish({ kind: 7, content: REACTION_CD_POSTED, tags: reactionTags });
+        await publish({ kind: 7, content: REACTION_CD_RECEIVED, tags: reactionTags });
       }
-      queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-posted'] });
-      toast({ title: '📬 CDs marked as posted!', description: 'Nicely done. Now sit back and wait for yours to arrive.' });
+      queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-received'] });
+      toast({ title: '📀 CDs marked as received!', description: 'Enjoy the music!' });
     } catch {
       toast({ title: 'Failed', description: 'Please try again.' });
     } finally {
@@ -106,7 +106,7 @@ export function CDPostedButton() {
         disabled={isPending}
         onClick={handleClick}
       >
-        {isPending ? 'Confirming…' : '📬 Mark CDs as posted'}
+        {isPending ? 'Confirming…' : '📀 Mark CDs as received'}
       </Button>
     </div>
   );

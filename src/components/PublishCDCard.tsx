@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { finalizeEvent } from 'nostr-tools';
+import { useNostr } from '@nostrify/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,9 +12,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { X, ImageIcon } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCDListing } from '@/hooks/useCDListing';
+import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { useUploadFile } from '@/hooks/useUploadFile';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { toast } from '@/hooks/useToast';
+import { hexToBytes } from '@/lib/utils';
 import { HASHTAG, CD_LISTING_D_TAG, KIND_CD_LISTING } from '@/lib/summerBurn';
 import type { NostrEvent } from '@nostrify/nostrify';
 
@@ -26,9 +30,28 @@ function getImages(event: NostrEvent): string[] {
   return event.tags.filter(([n]) => n === 'image').map(([, url]) => url);
 }
 
+function IdentityToggle({ anon, onChange, disabled }: { anon: boolean; onChange: (v: boolean) => void; disabled: boolean }) {
+  return (
+    <div className="flex rounded-md border border-border overflow-hidden text-xs w-fit">
+      <button type="button" disabled={disabled} onClick={() => onChange(false)}
+        className={`px-3 py-1.5 transition-colors ${!anon ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+        🌍 Public
+      </button>
+      <button type="button" disabled={disabled} onClick={() => onChange(true)}
+        className={`px-3 py-1.5 transition-colors ${anon ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'}`}>
+        🥷 Anonymous
+      </button>
+    </div>
+  );
+}
+
 export function PublishCDCard() {
+  const { nostr } = useNostr();
   const { user } = useCurrentUser();
-  const { data: listing, isLoading } = useCDListing(user?.pubkey);
+  const { anonNsecHex, anonPubkey } = useAnonIdentity();
+  const [isAnon, setIsAnon] = useState(false);
+  const activePubkey = isAnon && anonPubkey ? anonPubkey : user?.pubkey;
+  const { data: listing, isLoading } = useCDListing(activePubkey);
   const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
   const { mutateAsync: publish, isPending: isPublishing } = useNostrPublish();
   const queryClient = useQueryClient();
@@ -36,11 +59,19 @@ export function PublishCDCard() {
 
   const [title, setTitle] = useState('');
   const [tracklist, setTracklist] = useState('');
+  const [runtime, setRuntime] = useState('');
+  const [userTags, setUserTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const [images, setImages] = useState<string[]>([]); // existing + newly-uploaded URLs
   const [offerExtraCopies, setOfferExtraCopies] = useState(false);
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
   const [initialized, setInitialized] = useState(false);
+
+  const SUGGESTED_TAGS = [
+    'rock', 'pop', 'jazz', 'electronic', 'folk', 'classical',
+    'instrumental', 'live', 'acoustic', 'lo-fi',
+  ];
 
   // Prefill from the existing listing once it loads.
   useEffect(() => {
@@ -52,6 +83,8 @@ export function PublishCDCard() {
       setOfferExtraCopies(getTag(listing, 'status') === 'active');
       setPrice(listing.tags.find(([n]) => n === 'price')?.[1] ?? '');
       setQuantity(getTag(listing, 'quantity') ?? '');
+      setRuntime(listing.tags.find(([n, k]) => n === 'spec' && k === 'runtime')?.[2] ?? '');
+      setUserTags(listing.tags.filter(([n, v]) => n === 't' && v !== HASHTAG && v !== 'music' && v !== 'mixtape').map(([, v]) => v));
     }
     if (!isLoading) setInitialized(true);
   }, [listing, isLoading, initialized]);
@@ -84,24 +117,38 @@ export function PublishCDCard() {
 
   const handlePublish = async () => {
     if (!title.trim() || images.length === 0) return;
+    if (isAnon && !anonNsecHex) { toast({ title: 'Generate your anon identity first.' }); return; }
     try {
       const publishedAt = (listing && getTag(listing, 'published_at')) ?? String(Math.floor(Date.now() / 1000));
 
-      const tags: string[][] = [
+      const eventTags: string[][] = [
         ['d', CD_LISTING_D_TAG],
         ['title', title.trim()],
         ['t', HASHTAG],
+        ['t', 'music'],
+        ['t', 'mixtape'],
+        ...userTags.map((t) => ['t', t]),
         ['published_at', publishedAt],
         ...images.map((url) => ['image', url]),
       ];
+      if (runtime.trim()) eventTags.push(['spec', 'runtime', runtime.trim()]);
       if (offerExtraCopies) {
-        tags.push(['status', 'active']);
-        if (price.trim()) tags.push(['price', price.trim(), 'sats']);
-        if (quantity.trim()) tags.push(['quantity', quantity.trim()]);
+        eventTags.push(['status', 'active']);
+        if (price.trim()) eventTags.push(['price', price.trim(), 'sats']);
+        if (quantity.trim()) eventTags.push(['quantity', quantity.trim()]);
       }
 
-      await publish({ kind: KIND_CD_LISTING, content: tracklist.trim(), tags });
-      queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listing', user?.pubkey ?? ''] });
+      if (isAnon && anonNsecHex) {
+        const event = finalizeEvent(
+          { kind: KIND_CD_LISTING, content: tracklist.trim(), tags: eventTags, created_at: Math.floor(Date.now() / 1000) },
+          hexToBytes(anonNsecHex),
+        );
+        await nostr.event(event, { signal: AbortSignal.timeout(5000) });
+      } else {
+        await publish({ kind: KIND_CD_LISTING, content: tracklist.trim(), tags: eventTags });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listing', activePubkey ?? ''] });
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listings'] });
       toast({ title: 'CD listing published!' });
     } catch {
@@ -145,6 +192,65 @@ export function PublishCDCard() {
                 rows={6}
                 className="font-mono text-sm"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cd-runtime">Total runtime</Label>
+              <Input
+                id="cd-runtime"
+                placeholder="e.g. 74:32"
+                value={runtime}
+                onChange={(e) => setRuntime(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {[HASHTAG, 'music', 'mixtape'].map((t) => (
+                  <span key={t} className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-medium">
+                    #{t}
+                  </span>
+                ))}
+                {userTags.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setUserTags((prev) => prev.filter((x) => x !== t))}
+                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs hover:bg-destructive/20 hover:text-destructive transition-colors"
+                  >
+                    #{t} <X className="h-2.5 w-2.5" />
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Add a tag…"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value.toLowerCase().replace(/[^a-z0-9&-]/g, ''))}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ',') && tagInput.trim()) {
+                      e.preventDefault();
+                      const t = tagInput.trim();
+                      if (t !== HASHTAG && !userTags.includes(t)) setUserTags((prev) => [...prev, t]);
+                      setTagInput('');
+                    }
+                  }}
+                  className="text-sm"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {SUGGESTED_TAGS.filter((s) => !userTags.includes(s)).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setUserTags((prev) => [...prev, s])}
+                    className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground hover:border-primary/60 hover:text-foreground transition-colors"
+                  >
+                    #{s}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -221,6 +327,8 @@ export function PublishCDCard() {
                 </div>
               </div>
             )}
+
+            {anonPubkey && <IdentityToggle anon={isAnon} onChange={setIsAnon} disabled={isPending} />}
 
             <Button
               className="w-full"

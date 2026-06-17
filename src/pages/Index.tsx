@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { RSVPButton } from '@/components/RSVPButton';
 import { AttendeeList } from '@/components/AttendeeList';
 import { useRSVPs } from '@/hooks/useRSVPs';
+import { useCDStats } from '@/hooks/useCDStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HASHTAG, EVENT_START_DATE } from '@/lib/summerBurn';
 
@@ -35,6 +36,7 @@ const Index = () => {
   });
 
   const { data: rsvps, isLoading } = useRSVPs();
+  const { data: cdStats } = useCDStats();
   const countdown = useCountdown();
 
   return (
@@ -126,6 +128,26 @@ const Index = () => {
           </p>
         </div>
       </section>
+
+      {/* CD stats — only shown after event starts */}
+      {!countdown && cdStats && (cdStats.posted > 0 || cdStats.received > 0) && (
+        <section className="container py-4 max-w-3xl">
+          <div className="flex justify-center gap-8 text-center">
+            {cdStats.posted > 0 && (
+              <div>
+                <p className="text-2xl font-bold">{cdStats.posted}</p>
+                <p className="text-sm text-muted-foreground">📬 CDs in the post</p>
+              </div>
+            )}
+            {cdStats.received > 0 && (
+              <div>
+                <p className="text-2xl font-bold">{cdStats.received}</p>
+                <p className="text-sm text-muted-foreground">📀 CDs received</p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Attendees */}
       <section className="container py-12 max-w-3xl">

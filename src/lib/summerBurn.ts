@@ -40,9 +40,11 @@ export function isPermittedPoster(pubkey: string | undefined, rsvpedPubkeys: Set
 //   d-tag:   "summerburn2026:{senderPubkey}"
 export const KIND_MATCH = 31926;
 
-// kind 31927: sender publishes to confirm CDs have been posted.
-//   d-tag: "summerburn2026-posted"
-export const KIND_CD_POSTED = 31927;
+// Organiser's "Summer Burn is live!" post — participants react to this with
+// 📬 (CDs posted) or 📀 (CDs received) using Kind 7 reactions.
+export const SWAP_STATUS_EVENT_ID = 'd22c6e22231865a341dd9e8111737245b0575a5a95e24793972c17f00292e9b5';
+export const REACTION_CD_POSTED = '📬';
+export const REACTION_CD_RECEIVED = '📀';
 
 // kind 31928: sender publishes postage cost for a specific recipient.
 //   signed by sender's anon keypair
@@ -55,6 +57,11 @@ export const KIND_POSTAGE_COST = 31928;
 //   d-tag: recipientAnonPubkey
 //   content: Blossom image URL
 export const KIND_POSTAGE_RECEIPT = 31929;
+
+// Kind 31555: GammaMarkets product review (NIP-99 extension).
+//   d-tag: "a:30402:<seller-pubkey>:<CD_LISTING_D_TAG>"
+//   rating tag: ["rating", "<0.00-1.00>", "thumb"] — 0=1★, 0.25=2★, 0.5=3★, 0.75=4★, 1=5★
+export const KIND_CD_REVIEW = 31555;
 
 // NIP-99 classified listing, used for "publish your CD" in Account.
 // One listing per user, addressable via (kind, pubkey, CD_LISTING_D_TAG).

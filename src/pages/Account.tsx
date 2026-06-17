@@ -12,6 +12,8 @@ import { AnonZapButton } from '@/components/AnonZapButton';
 import { PostageReceiptUpload } from '@/components/PostageReceiptUpload';
 import { PublishCDCard } from '@/components/PublishCDCard';
 import { RSVPButton } from '@/components/RSVPButton';
+import { CDReceivedButton } from '@/components/CDReceivedButton';
+import { OrganizerTools } from '@/components/OrganizerTools';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -236,6 +238,20 @@ const Account = () => {
             <CDPostedButton />
           </CardContent>
         </Card>
+
+        {/* CD Received */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">CD Delivery</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Once your CDs have arrived, let the community know!
+            </p>
+            <CDReceivedButton />
+          </CardContent>
+        </Card>
+
+        {/* Organiser tools — only visible to the organiser */}
+        {user.pubkey === ORGANIZER_PUBKEY && <OrganizerTools />}
 
         {/* Publish CD listing */}
         <PublishCDCard />

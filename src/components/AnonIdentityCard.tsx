@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { finalizeEvent, generateSecretKey, nip44 } from 'nostr-tools';
+import { finalizeEvent, generateSecretKey, nip44, nip19 } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,13 +8,15 @@ import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { toast } from '@/hooks/useToast';
-import { hexToBytes } from '@/lib/utils';
+import { hexToBytes, bytesToHex } from '@/lib/utils';
 import { ORGANIZER_PUBKEY } from '@/lib/summerBurn';
 
 export function AnonIdentityCard() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
-  const { anonNsecHex, anonPubkey, anonNpub, generate } = useAnonIdentity();
+  const { anonNsecHex, anonPubkey, anonNpub, generate, restore } = useAnonIdentity();
+  const [restoreInput, setRestoreInput] = useState('');
+  const [showRestore, setShowRestore] = useState(false);
   const { mutateAsync: publish, isPending } = useNostrPublish();
 
   const [lightningAddress, setLightningAddress] = useState('');
@@ -136,6 +138,26 @@ export function AnonIdentityCard() {
     }
   };
 
+  const handleRestore = () => {
+    const input = restoreInput.trim();
+    if (!input) return;
+    try {
+      let hex: string;
+      if (input.startsWith('nsec1')) {
+        const { data } = nip19.decode(input);
+        hex = bytesToHex(data as Uint8Array);
+      } else {
+        hex = input;
+      }
+      restore(hex);
+      setRestoreInput('');
+      setShowRestore(false);
+      toast({ title: 'Anon identity restored!', description: 'Your key is saved in this browser.' });
+    } catch {
+      toast({ title: 'Invalid key', description: 'Paste your nsec1… or hex key from your backup DM.' });
+    }
+  };
+
   if (!anonNsecHex || !anonPubkey) {
     return (
       <Card>
@@ -148,9 +170,30 @@ export function AnonIdentityCard() {
             address to your CD partners without revealing who you are on Nostr. Your browser will
             save the key, and we'll DM you a backup automatically.
           </p>
-          <Button onClick={handleGenerate} disabled={isPending}>
-            {isPending ? 'Generating…' : 'Generate anon identity'}
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={handleGenerate} disabled={isPending}>
+              {isPending ? 'Generating…' : 'Generate anon identity'}
+            </Button>
+            <Button variant="outline" onClick={() => setShowRestore((v) => !v)}>
+              Restore from backup
+            </Button>
+          </div>
+          {showRestore && (
+            <div className="space-y-2 pt-1">
+              <p className="text-xs text-muted-foreground">Paste your nsec from your backup DM.</p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="nsec1… or hex"
+                  value={restoreInput}
+                  onChange={(e) => setRestoreInput(e.target.value)}
+                  className="font-mono text-xs"
+                />
+                <Button size="sm" onClick={handleRestore} disabled={!restoreInput.trim()}>
+                  Restore
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
