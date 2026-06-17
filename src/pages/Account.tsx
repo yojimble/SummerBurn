@@ -23,6 +23,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { useMyMatch } from '@/hooks/useMyMatch';
 import { useAddressDMs } from '@/hooks/useAddressDMs';
+import { useSenderStatus } from '@/hooks/useSenderStatus';
 import { usePostageReceipts } from '@/hooks/usePostageReceipts';
 import { toast } from '@/hooks/useToast';
 import { hexToBytes } from '@/lib/utils';
@@ -44,6 +45,8 @@ const Account = () => {
   );
 
   // Postage receipt images published by senders
+  const { data: senderPosted } = useSenderStatus(match?.receivingFrom ?? []);
+
   const { data: postageReceipts } = usePostageReceipts(
     match?.receivingFrom ?? [],
     anonPubkey,
@@ -162,12 +165,18 @@ const Account = () => {
                     </div>
                   )}
                   {match.receivingFrom.map((senderAnonPubkey) => {
+                    const hasPosted = senderPosted?.has(senderAnonPubkey);
                     return (
                       <div key={senderAnonPubkey} className="rounded-lg border p-3 space-y-2">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-medium">
-                            Burner <span className="font-mono">{nip19.npubEncode(senderAnonPubkey).slice(5, 13)}</span>
-                          </p>
+                          <div>
+                            <p className="text-sm font-medium">
+                              Burner <span className="font-mono">{nip19.npubEncode(senderAnonPubkey).slice(5, 13)}</span>
+                            </p>
+                            {hasPosted && (
+                              <p className="text-xs text-green-600 font-medium mt-0.5">📬 CD posted!</p>
+                            )}
+                          </div>
                           <AnonZapButton anonPubkey={senderAnonPubkey} label={`Burner ${nip19.npubEncode(senderAnonPubkey).slice(5, 13)}`} />
                         </div>
                           {postageReceipts?.[senderAnonPubkey] && (
