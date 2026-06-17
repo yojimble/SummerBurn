@@ -251,10 +251,7 @@ const Account = () => {
         {/* CD Received */}
         <Card>
           <CardHeader><CardTitle className="text-base">CD Delivery</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Once your CDs have arrived, let the community know!
-            </p>
+          <CardContent>
             <CDReceivedButton />
           </CardContent>
         </Card>
