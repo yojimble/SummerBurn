@@ -4,6 +4,7 @@ import { useNostr } from '@nostrify/react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -67,6 +68,9 @@ export function PublishCDCard() {
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
   const [initialized, setInitialized] = useState(false);
+  const [showLnDialog, setShowLnDialog] = useState(false);
+  const [lightningAddress, setLightningAddress] = useState('');
+  const [savingLn, setSavingLn] = useState(false);
 
   const SUGGESTED_TAGS = [
     'rock', 'pop', 'jazz', 'electronic', 'folk', 'classical',
@@ -151,12 +155,65 @@ export function PublishCDCard() {
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listing', activePubkey ?? ''] });
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listings'] });
       toast({ title: 'CD listing published!' });
+      if (isAnon) setShowLnDialog(true);
     } catch {
       toast({ title: 'Failed to publish', description: 'Please try again.' });
     }
   };
 
+  const handleSaveLightningAddress = async () => {
+    if (!anonNsecHex || !lightningAddress.trim()) return;
+    const addr = lightningAddress.trim();
+    if (!addr.includes('@')) {
+      toast({ title: 'Invalid address', description: 'Enter a Lightning address like you@getalby.com' });
+      return;
+    }
+    setSavingLn(true);
+    try {
+      const event = finalizeEvent(
+        { kind: 0, created_at: Math.floor(Date.now() / 1000), tags: [], content: JSON.stringify({ lud16: addr }) },
+        hexToBytes(anonNsecHex),
+      );
+      await nostr.event(event, { signal: AbortSignal.timeout(5000) });
+      toast({ title: '⚡ Lightning address saved', description: 'Recipients can now zap your anon identity.' });
+      setShowLnDialog(false);
+      setLightningAddress('');
+    } catch {
+      toast({ title: 'Failed to save', description: 'Please try again.' });
+    } finally {
+      setSavingLn(false);
+    }
+  };
+
   return (
+    <>
+    <Dialog open={showLnDialog} onOpenChange={setShowLnDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>⚡ Add a Lightning address</DialogTitle>
+          <DialogDescription>
+            Your CD is published anonymously. Add a Lightning address to your anon identity so
+            recipients can zap you. For maximum privacy, use a fresh address not linked to your
+            real identity.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 pt-1">
+          <Input
+            type="text"
+            placeholder="you@getalby.com"
+            value={lightningAddress}
+            onChange={(e) => setLightningAddress(e.target.value)}
+            className="text-sm"
+          />
+          <div className="flex gap-2 justify-end">
+            <Button variant="ghost" onClick={() => setShowLnDialog(false)}>Skip</Button>
+            <Button onClick={handleSaveLightningAddress} disabled={savingLn || !lightningAddress.trim()}>
+              {savingLn ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
     <Card>
       <CardHeader><CardTitle className="text-base">📀 Publish Your CD</CardTitle></CardHeader>
       <CardContent className="space-y-4">
@@ -341,5 +398,6 @@ export function PublishCDCard() {
         )}
       </CardContent>
     </Card>
+    </>
   );
 }
