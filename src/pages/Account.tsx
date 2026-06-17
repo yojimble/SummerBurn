@@ -145,9 +145,7 @@ const Account = () => {
                     <p className="text-sm text-green-600">✓ Your address has been sent to your Burn group.</p>
                   ) : (
                     <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Enter your postal address — it'll be sent anonymously to everyone in your group.
-                      </p>
+
                       <Textarea
                         placeholder={'Your Name\n123 Street\nCity\nPostcode\nCountry'}
                         value={myAddress}
