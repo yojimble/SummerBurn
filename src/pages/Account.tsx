@@ -158,7 +158,7 @@ const Account = () => {
                         disabled={sendingAddress || !myAddress.trim()}
                         className="w-full"
                       >
-                        {sendingAddress ? 'Sending…' : `Send my address to my Burn group`}
+                        {sendingAddress ? 'Sending…' : 'Send my address'}
                       </Button>
                     </div>
                   )}
