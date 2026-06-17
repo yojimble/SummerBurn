@@ -86,7 +86,7 @@ export function CDReceivedButton() {
       disabled={isPosting}
       onClick={handleClick}
     >
-      {isPosting ? 'Confirming…' : '📀 CDs received — let your sender know!'}
+      {isPosting ? 'Confirming…' : '📀 Mark as received'}
     </Button>
   );
 }

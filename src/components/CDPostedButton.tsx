@@ -101,7 +101,7 @@ export function CDPostedButton() {
         disabled={isPosting}
         onClick={handleClick}
       >
-        {isPosting ? 'Confirming…' : '📬 CDs posted — let your Burners know!'}
+        {isPosting ? 'Confirming…' : '📬 Mark as sent'}
       </Button>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
