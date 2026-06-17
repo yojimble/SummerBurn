@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { finalizeEvent, generateSecretKey, nip44, nip19 } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
+import { ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAnonIdentity } from '@/hooks/useAnonIdentity';
@@ -17,6 +19,7 @@ export function AnonIdentityCard() {
   const { anonNsecHex, anonPubkey, anonNpub, generate, restore } = useAnonIdentity();
   const [restoreInput, setRestoreInput] = useState('');
   const [showRestore, setShowRestore] = useState(false);
+  const [open, setOpen] = useState(false);
   const { mutateAsync: publish, isPending } = useNostrPublish();
 
   const sendBackupDM = async (nsecHex: string) => {
@@ -123,72 +126,85 @@ export function AnonIdentityCard() {
     }
   };
 
+  const header = (
+    <CardHeader className="py-3">
+      <CollapsibleTrigger asChild>
+        <button type="button" className="flex items-center justify-between w-full text-left">
+          <CardTitle className="text-base">Your Anon Swap Identity</CardTitle>
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+      </CollapsibleTrigger>
+    </CardHeader>
+  );
+
   if (!anonNsecHex || !anonPubkey) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Your Anon Swap Identity</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Generate a fresh anonymous identity for this swap. You'll use it to send your postal
-            address to your CD partners without revealing who you are on Nostr. Your browser will
-            save the key, and we'll DM you a backup automatically.
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            <Button onClick={handleGenerate} disabled={isPending}>
-              {isPending ? 'Generating…' : 'Generate anon identity'}
-            </Button>
-            <Button variant="outline" onClick={() => setShowRestore((v) => !v)}>
-              Restore from backup
-            </Button>
-          </div>
-          {showRestore && (
-            <div className="space-y-2 pt-1">
-              <p className="text-xs text-muted-foreground">Paste your nsec from your backup DM.</p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="nsec1… or hex"
-                  value={restoreInput}
-                  onChange={(e) => setRestoreInput(e.target.value)}
-                  className="font-mono text-xs"
-                />
-                <Button size="sm" onClick={handleRestore} disabled={!restoreInput.trim()}>
-                  Restore
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <Card>
+          {header}
+          <CollapsibleContent>
+            <CardContent className="pt-0 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Generate a fresh anonymous identity for this swap. You'll use it to send your postal
+                address to your CD partners without revealing who you are on Nostr. Your browser will
+                save the key, and we'll DM you a backup automatically.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <Button onClick={handleGenerate} disabled={isPending}>
+                  {isPending ? 'Generating…' : 'Generate anon identity'}
+                </Button>
+                <Button variant="outline" onClick={() => setShowRestore((v) => !v)}>
+                  Restore from backup
                 </Button>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              {showRestore && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-xs text-muted-foreground">Paste your nsec from your backup DM.</p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="nsec1… or hex"
+                      value={restoreInput}
+                      onChange={(e) => setRestoreInput(e.target.value)}
+                      className="font-mono text-xs"
+                    />
+                    <Button size="sm" onClick={handleRestore} disabled={!restoreInput.trim()}>
+                      Restore
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Your Anon Swap Identity</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Anon npub</p>
-          <p className="font-mono text-xs break-all bg-muted p-2 rounded">{anonNpub}</p>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Your browser has saved this key, and a backup has been sent to your Nostr DMs —
-          check there if you ever switch devices.
-        </p>
-
-
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={handleBackup} disabled={isPending}>
-            {isPending ? 'Sending…' : 'Re-send backup DM'}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleGenerate} disabled={isPending}>
-            Regenerate
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card>
+        {header}
+        <CollapsibleContent>
+          <CardContent className="pt-0 space-y-4">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Anon npub</p>
+              <p className="font-mono text-xs break-all bg-muted p-2 rounded">{anonNpub}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your browser has saved this key, and a backup has been sent to your Nostr DMs —
+              check there if you ever switch devices.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={handleBackup} disabled={isPending}>
+                {isPending ? 'Sending…' : 'Re-send backup DM'}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleGenerate} disabled={isPending}>
+                Regenerate
+              </Button>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }

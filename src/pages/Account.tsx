@@ -5,6 +5,7 @@ import { finalizeEvent, getPublicKey } from 'nostr-tools';
 import { wrapEvent } from 'nostr-tools/nip59';
 import { SimplePool } from 'nostr-tools/pool';
 import { useNostr } from '@nostrify/react';
+import { ChevronDown } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { AnonIdentityCard } from '@/components/AnonIdentityCard';
 import { CDPostedButton } from '@/components/CDPostedButton';
@@ -17,6 +18,7 @@ import { OrganizerTools } from '@/components/OrganizerTools';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -30,6 +32,29 @@ import { hexToBytes } from '@/lib/utils';
 import { nip19 } from 'nostr-tools';
 import { ORGANIZER_PUBKEY, DM_RELAYS } from '@/lib/summerBurn';
 
+function CollapsibleCard({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card>
+        <CardHeader className="py-3">
+          <CollapsibleTrigger asChild>
+            <button type="button" className="flex items-center justify-between w-full text-left">
+              <CardTitle className="text-base">{title}</CardTitle>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+          </CollapsibleTrigger>
+        </CardHeader>
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            {children}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
+
 const Account = () => {
   useSeoMeta({ title: 'My Account — Bitcoin Summer Burn 2026' });
 
@@ -37,14 +62,12 @@ const Account = () => {
   const { anonNsecHex, anonPubkey } = useAnonIdentity();
   const { data: match, isLoading: matchLoading } = useMyMatch();
 
-  // Senders read address DMs at their anon pubkey, sent by recipients' anon pubkeys
   const { data: addressDMs, isLoading: dmsLoading } = useAddressDMs(
     match?.sendingTo ?? [],
     anonPubkey,
     anonNsecHex,
   );
 
-  // Postage receipt images published by senders
   const { data: senderPosted } = useSenderStatus(match?.receivingFrom ?? []);
 
   const { data: postageReceipts } = usePostageReceipts(
@@ -74,7 +97,7 @@ const Account = () => {
       pool.close(DM_RELAYS);
       setAddressSent(true);
       setMyAddress('');
-      toast({ title: '📬 Address sent!', description: 'Your Burn group now know where to send your CD.' });
+      toast({ title: '📬 Address sent!' });
     } catch {
       toast({ title: 'Failed to send', description: 'Please try again.' });
     } finally {
@@ -95,166 +118,151 @@ const Account = () => {
     <Layout>
       <div className="container max-w-2xl py-8 space-y-6">
 
-        {/* Profile */}
+        {/* Profile + RSVP */}
         <div className="flex items-center gap-4">
           <Avatar className="h-14 w-14">
             <AvatarImage src={metadata?.picture} alt={displayName} />
             <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold">{displayName}</h1>
             <p className="text-xs text-muted-foreground font-mono">
               {nip19.npubEncode(user.pubkey).slice(0, 20)}…
             </p>
           </div>
+          <RSVPButton compact />
         </div>
-
-        {/* RSVP */}
-        <Card>
-          <CardHeader><CardTitle className="text-base">RSVP Status</CardTitle></CardHeader>
-          <CardContent><RSVPButton /></CardContent>
-        </Card>
 
         {/* Anon identity */}
         <AnonIdentityCard />
 
         {/* CD Partners */}
-        <Card>
-          <CardHeader><CardTitle className="text-base">Your CD Partners</CardTitle></CardHeader>
-          <CardContent className="space-y-6">
-            {!matchesPublished ? (
-              <p className="text-sm text-muted-foreground">
-                Matches haven't been published yet — check back after the sign-up window closes.
-              </p>
-            ) : matchLoading ? (
-              <div className="space-y-2">
-                {[0, 1, 2].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
-              </div>
-            ) : match ? (
-              <>
-                {/* Senders posting to you — send them your address */}
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Someone's posting you a CD
+        <CollapsibleCard title="Your CD Partners" defaultOpen={false}>
+          {!matchesPublished ? (
+            <p className="text-sm text-muted-foreground">
+              Matches haven't been published yet — check back after the sign-up window closes.
+            </p>
+          ) : matchLoading ? (
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : match ? (
+            <div className="space-y-6">
+              {/* Senders posting to you */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Someone's posting you a CD
+                </p>
+                {!anonNsecHex ? (
+                  <p className="text-sm text-amber-600">
+                    Generate your anon identity above before sending your address.
                   </p>
-                  {!anonNsecHex ? (
-                    <p className="text-sm text-amber-600">
-                      Generate your anon identity above before sending your address.
-                    </p>
-                  ) : addressSent ? (
-                    <p className="text-sm text-green-600">✓ Your address has been sent to your Burn group.</p>
-                  ) : (
-                    <div className="space-y-2">
-
-                      <Textarea
-                        placeholder={'Your Name\n123 Street\nCity\nPostcode\nCountry'}
-                        value={myAddress}
-                        onChange={e => setMyAddress(e.target.value)}
-                        rows={5}
-                        className="font-mono text-sm"
-                      />
-                      <Button
-                        onClick={handleSendAddress}
-                        disabled={sendingAddress || !myAddress.trim()}
-                        className="w-full"
-                      >
-                        {sendingAddress ? 'Sending…' : 'Send my address'}
-                      </Button>
-                    </div>
-                  )}
-                  {match.receivingFrom.map((senderAnonPubkey) => {
-                    const hasPosted = senderPosted?.has(senderAnonPubkey);
-                    return (
-                      <div key={senderAnonPubkey} className="rounded-lg border p-3 space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-medium">
-                              Burner <span className="font-mono">{nip19.npubEncode(senderAnonPubkey).slice(5, 13)}</span>
-                            </p>
-                            {hasPosted && (
-                              <p className="text-xs text-green-600 font-medium mt-0.5">📬 CD posted!</p>
-                            )}
-                          </div>
+                ) : addressSent ? (
+                  <p className="text-sm text-green-600">✓ Your address has been sent.</p>
+                ) : (
+                  <div className="space-y-2">
+                    <Textarea
+                      placeholder={'Your Name\n123 Street\nCity\nPostcode\nCountry'}
+                      value={myAddress}
+                      onChange={e => setMyAddress(e.target.value)}
+                      rows={5}
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      onClick={handleSendAddress}
+                      disabled={sendingAddress || !myAddress.trim()}
+                      className="w-full"
+                    >
+                      {sendingAddress ? 'Sending…' : 'Send my address'}
+                    </Button>
+                  </div>
+                )}
+                {match.receivingFrom.map((senderAnonPubkey) => {
+                  const hasPosted = senderPosted?.has(senderAnonPubkey);
+                  return (
+                    <div key={senderAnonPubkey} className="rounded-lg border p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium">
+                            Burner <span className="font-mono">{nip19.npubEncode(senderAnonPubkey).slice(5, 13)}</span>
+                          </p>
+                          <p className={`text-xs font-medium mt-0.5 ${hasPosted ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            {hasPosted ? '📬 CD posted!' : 'Awaiting dispatch'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <CDReceivedButton senderAnonPubkey={senderAnonPubkey} />
                           <AnonZapButton anonPubkey={senderAnonPubkey} label={`Burner ${nip19.npubEncode(senderAnonPubkey).slice(5, 13)}`} />
                         </div>
-                          {postageReceipts?.[senderAnonPubkey] && (
-                            <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground font-medium">📬 Proof of postage:</p>
-                              <img
-                                src={postageReceipts[senderAnonPubkey]}
-                                alt="Postage receipt"
-                                className="rounded-lg w-full max-h-48 object-contain bg-muted"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-
-                {/* Recipients you're posting to — waiting for their address */}
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    You're posting to
-                  </p>
-                  {dmsLoading ? (
-                    <Skeleton className="h-24 w-full" />
-                  ) : match.sendingTo.map((recipientAnonPubkey) => {
-                    const address = addressDMs?.[recipientAnonPubkey];
-                    return (
-                      <div key={recipientAnonPubkey} className="rounded-lg border p-3 space-y-2">
-                        <p className="text-sm font-medium">
-                          Burner <span className="font-mono">{nip19.npubEncode(recipientAnonPubkey).slice(5, 13)}</span>
-                        </p>
-                        {address ? (
-                          <div className="space-y-2">
-                            <div className="space-y-1">
-                              <p className="text-xs text-green-600 font-medium">✓ Address received — post their CD here:</p>
-                              <pre className="text-sm whitespace-pre-wrap bg-muted rounded p-2">{address}</pre>
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-xs text-muted-foreground">Proof of postage</p>
-                              <PostageReceiptUpload
-                                recipientAnonPubkey={recipientAnonPubkey}
-                                anonNsecHex={anonNsecHex ?? ''}
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-muted-foreground italic">
-                            Waiting for their address…
-                          </p>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : null}
-          </CardContent>
-        </Card>
+                      {postageReceipts?.[senderAnonPubkey] && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground font-medium">📬 Proof of postage:</p>
+                          <img
+                            src={postageReceipts[senderAnonPubkey]}
+                            alt="Postage receipt"
+                            className="rounded-lg w-full max-h-48 object-contain bg-muted"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Recipients you're posting to */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  You're posting to
+                </p>
+                {dmsLoading ? (
+                  <Skeleton className="h-24 w-full" />
+                ) : match.sendingTo.map((recipientAnonPubkey) => {
+                  const address = addressDMs?.[recipientAnonPubkey];
+                  return (
+                    <div key={recipientAnonPubkey} className="rounded-lg border p-3 space-y-2">
+                      <p className="text-sm font-medium">
+                        Burner <span className="font-mono">{nip19.npubEncode(recipientAnonPubkey).slice(5, 13)}</span>
+                      </p>
+                      {address ? (
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <p className="text-xs text-green-600 font-medium">✓ Address received — post their CD here:</p>
+                            <pre className="text-sm whitespace-pre-wrap bg-muted rounded p-2">{address}</pre>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Proof of postage</p>
+                            <PostageReceiptUpload
+                              recipientAnonPubkey={recipientAnonPubkey}
+                              anonNsecHex={anonNsecHex ?? ''}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">
+                          Waiting for their address…
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </CollapsibleCard>
 
         {/* CD Dispatch */}
-        <Card>
-          <CardHeader><CardTitle className="text-base">CD Dispatch</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
+        <CollapsibleCard title="CD Dispatch" defaultOpen={false}>
+          <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               Once you've posted all three CDs, mark them as sent. Try to get them in the post
               within two weeks of July 21st.
             </p>
             <CDPostedButton />
-          </CardContent>
-        </Card>
+          </div>
+        </CollapsibleCard>
 
-        {/* CD Received */}
-        <Card>
-          <CardHeader><CardTitle className="text-base">CD Delivery</CardTitle></CardHeader>
-          <CardContent>
-            <CDReceivedButton />
-          </CardContent>
-        </Card>
-
-        {/* Organiser tools — only visible to the organiser */}
+        {/* Organiser tools */}
         {user.pubkey === ORGANIZER_PUBKEY && <OrganizerTools />}
 
         {/* Publish CD listing */}

@@ -5,12 +5,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
-import { X, ImageIcon } from 'lucide-react';
+import { X, ImageIcon, ChevronDown } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useCDListing } from '@/hooks/useCDListing';
 import { useAnonIdentity } from '@/hooks/useAnonIdentity';
@@ -68,6 +69,7 @@ export function PublishCDCard() {
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
   const [initialized, setInitialized] = useState(false);
+  const [open, setOpen] = useState(false);
   const [showLnDialog, setShowLnDialog] = useState(false);
   const [lightningAddress, setLightningAddress] = useState('');
   const [savingLn, setSavingLn] = useState(false);
@@ -186,7 +188,7 @@ export function PublishCDCard() {
   };
 
   return (
-    <>
+    <Collapsible open={open} onOpenChange={setOpen}>
     <Dialog open={showLnDialog} onOpenChange={setShowLnDialog}>
       <DialogContent>
         <DialogHeader>
@@ -215,8 +217,16 @@ export function PublishCDCard() {
       </DialogContent>
     </Dialog>
     <Card>
-      <CardHeader><CardTitle className="text-base">📀 Publish Your CD</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
+      <CardHeader className="py-3">
+        <CollapsibleTrigger asChild>
+          <button type="button" className="flex items-center justify-between w-full text-left">
+            <CardTitle className="text-base">📀 Publish Your CD</CardTitle>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+          </button>
+        </CollapsibleTrigger>
+      </CardHeader>
+      <CollapsibleContent>
+      <CardContent className="pt-0 space-y-4">
         {isLoading ? (
           <div className="space-y-2">
             <Skeleton className="h-10 w-full" />
@@ -397,7 +407,8 @@ export function PublishCDCard() {
           </>
         )}
       </CardContent>
+      </CollapsibleContent>
     </Card>
-    </>
+    </Collapsible>
   );
 }

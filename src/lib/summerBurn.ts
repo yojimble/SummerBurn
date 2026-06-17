@@ -40,6 +40,11 @@ export function isPermittedPoster(pubkey: string | undefined, rsvpedPubkeys: Set
 //   d-tag:   "summerburn2026:{senderPubkey}"
 export const KIND_MATCH = 31926;
 
+// kind 31930: recipient marks a specific sender's CD as received.
+//   signed by recipient's anon keypair
+//   d-tag: senderAnonPubkey
+export const KIND_CD_RECEIVED = 31930;
+
 // Organiser's "Summer Burn is live!" post — participants react to this with
 // 📬 (CDs posted) or 📀 (CDs received) using Kind 7 reactions.
 export const SWAP_STATUS_EVENT_ID = 'd22c6e22231865a341dd9e8111737245b0575a5a95e24793972c17f00292e9b5';

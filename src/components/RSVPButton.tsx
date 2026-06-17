@@ -6,7 +6,7 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { toast } from '@/hooks/useToast';
 import { RSVP_D_TAG, CALENDAR_EVENT_COORDINATE } from '@/lib/summerBurn';
 
-export function RSVPButton() {
+export function RSVPButton({ compact }: { compact?: boolean } = {}) {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const { mutateAsync: publish } = useNostrPublish();
@@ -65,14 +65,14 @@ export function RSVPButton() {
   }
 
   if (rsvpLoading) {
-    return <Button size="lg" disabled className="px-8">Loading…</Button>;
+    return <Button size={compact ? 'sm' : 'lg'} disabled className={compact ? '' : 'px-8'}>Loading…</Button>;
   }
 
   if (isRSVPd) {
     return (
-      <div className="flex flex-col items-center gap-2">
-        <p className="text-green-600 dark:text-green-400 font-semibold text-lg">
-          ✓ You're signed up!
+      <div className={`flex ${compact ? 'flex-row items-center gap-2' : 'flex-col items-center gap-2'}`}>
+        <p className={`text-green-600 dark:text-green-400 font-semibold ${compact ? 'text-sm' : 'text-lg'}`}>
+          ✓ {compact ? 'RSVPd' : "You're signed up!"}
         </p>
         <Button
           variant="outline"
@@ -88,12 +88,12 @@ export function RSVPButton() {
 
   return (
     <Button
-      size="lg"
+      size={compact ? 'sm' : 'lg'}
       disabled={isPending}
       onClick={() => doRSVP('accepted')}
-      className="px-8"
+      className={compact ? '' : 'px-8'}
     >
-      {isPending ? 'RSVPing…' : '🔥 RSVP for Bitcoin Summer Burn 2026'}
+      {isPending ? 'RSVPing…' : compact ? '🔥 RSVP' : '🔥 RSVP for Bitcoin Summer Burn 2026'}
     </Button>
   );
 }
