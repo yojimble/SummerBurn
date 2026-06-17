@@ -218,8 +218,8 @@ export function AnonIdentityCard() {
         <div className="space-y-2 pt-1 border-t border-border">
           <p className="text-xs font-medium">⚡ Add Lightning address</p>
           <p className="text-xs text-muted-foreground">
-            Optional — lets your recipients zap you to help cover postage costs. For maximum
-            privacy, use a fresh Lightning address not linked to your real identity.
+            Optional — lets your recipients zap you. For maximum privacy, use a fresh
+            Lightning address not linked to your real identity.
           </p>
           <div className="flex gap-2">
             <Input
