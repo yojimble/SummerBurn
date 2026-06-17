@@ -111,7 +111,7 @@ export function CDPostedButton() {
             onCheckedChange={(v) => setShareToNostr(!!v)}
             disabled={isPosting}
           />
-          <Label htmlFor="share-nostr" className="text-sm cursor-pointer">Also share as a Nostr note</Label>
+          <Label htmlFor="share-nostr" className="text-sm cursor-pointer">Also share to Nostr</Label>
         </div>
         {shareToNostr && (
           <Textarea
