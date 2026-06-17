@@ -3,11 +3,14 @@ import { finalizeEvent } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { toast } from '@/hooks/useToast';
-import { SWAP_STATUS_EVENT_ID, REACTION_CD_POSTED, ORGANIZER_PUBKEY } from '@/lib/summerBurn';
+import { SWAP_STATUS_EVENT_ID, REACTION_CD_POSTED, ORGANIZER_PUBKEY, HASHTAG } from '@/lib/summerBurn';
 import { hexToBytes } from '@/lib/utils';
 
 function IdentityToggle({ anon, onChange, disabled }: { anon: boolean; onChange: (v: boolean) => void; disabled: boolean }) {
@@ -31,6 +34,8 @@ const reactionTags = [
   ['k', '1'],
 ];
 
+const DEFAULT_NOTE = `📬 CDs posted! Three mixes winging their way to three lucky Burners. Now the wait begins... 🔥 #${HASHTAG}`;
+
 export function CDPostedButton() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
@@ -39,6 +44,8 @@ export function CDPostedButton() {
   const queryClient = useQueryClient();
   const [isAnon, setIsAnon] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [shareToNostr, setShareToNostr] = useState(false);
+  const [noteText, setNoteText] = useState(DEFAULT_NOTE);
 
   const isPending = isPublishing || isPosting;
 
@@ -88,6 +95,15 @@ export function CDPostedButton() {
       } else {
         await publish({ kind: 7, content: REACTION_CD_POSTED, tags: reactionTags });
       }
+
+      if (shareToNostr && noteText.trim()) {
+        await publish({
+          kind: 1,
+          content: noteText.trim(),
+          tags: [['t', HASHTAG]],
+        });
+      }
+
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-posted'] });
       toast({ title: '📬 CDs marked as posted!', description: 'Nicely done. Now sit back and wait for yours to arrive.' });
     } catch {
@@ -106,8 +122,28 @@ export function CDPostedButton() {
         disabled={isPending}
         onClick={handleClick}
       >
-        {isPending ? 'Confirming…' : '📬 Mark CDs as posted'}
+        {isPending ? 'Confirming…' : '📬 CDs posted — let your Burners know!'}
       </Button>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="share-nostr"
+            checked={shareToNostr}
+            onCheckedChange={(v) => setShareToNostr(!!v)}
+            disabled={isPending}
+          />
+          <Label htmlFor="share-nostr" className="text-sm cursor-pointer">Also share as a Nostr note</Label>
+        </div>
+        {shareToNostr && (
+          <Textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            rows={3}
+            className="text-sm"
+            disabled={isPending}
+          />
+        )}
+      </div>
     </div>
   );
 }
