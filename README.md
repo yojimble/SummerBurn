@@ -18,10 +18,9 @@ The hard problem in a postal swap is letting strangers exchange addresses withou
 This app handles that in a few layers:
 
 - **Real identity is used for everything social.** RSVPing, posting/replying/quoting in the
-  feed and forum, uploading gallery art, publishing your gift as a listing, marking it as
-  posted, and zapping — all signed with your real Nostr account. None of that needs to be
+  feed and forum, uploading gallery art and zapping — all signed with your real Nostr account. None of that needs to be
   anonymous, and being identifiable is what makes the social side fun.
-- **The anon identity is used for exactly three things: addresses, dispatch signals, and optional feedback.**
+- **The anon identity is used for exactly three things: addresses, dispatch DMs and optional feedback.**
   From the Account page, each participant generates a disposable, one-off Nostr keypair
   that exists only for this swap, stored locally in their browser. It's used only to:
   1. **Exchange postal addresses.** Send/receive your address as a NIP-17 private direct
