@@ -130,8 +130,14 @@ const Account = () => {
               {nip19.npubEncode(user.pubkey).slice(0, 20)}…
             </p>
           </div>
-          <RSVPButton compact />
         </div>
+        <div className="flex justify-center">
+          <RSVPButton />
+        </div>
+
+        {user.pubkey === ORGANIZER_PUBKEY ? (
+          <OrganizerTools />
+        ) : (<>
 
         {/* Anon identity */}
         <AnonIdentityCard />
@@ -262,11 +268,10 @@ const Account = () => {
           </div>
         </CollapsibleCard>
 
-        {/* Organiser tools */}
-        {user.pubkey === ORGANIZER_PUBKEY && <OrganizerTools />}
-
         {/* Publish CD listing */}
         <PublishCDCard />
+
+        </>)}
 
       </div>
     </Layout>

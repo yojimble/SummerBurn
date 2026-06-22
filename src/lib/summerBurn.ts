@@ -40,16 +40,15 @@ export function isPermittedPoster(pubkey: string | undefined, rsvpedPubkeys: Set
 //   d-tag:   "summerburn2026:{senderPubkey}"
 export const KIND_MATCH = 31926;
 
-// kind 31930: recipient marks a specific sender's CD as received.
-//   signed by recipient's anon keypair
-//   d-tag: senderAnonPubkey
-export const KIND_CD_RECEIVED = 31930;
+// Pubkeys excluded from gallery and stats (e.g. duplicate/test listings).
+export const BLOCKED_PUBKEYS = new Set([
+  '0a42407f6821ce9b884e751e955e37bf0329fbb0d6ca8e77d797130baf56891c',
+]);
 
 // Organiser's "Summer Burn is live!" post — participants react to this with
-// 📬 (CDs posted) or 📀 (CDs received) using Kind 7 reactions.
+// 📬 (CDs posted) using Kind 7 reactions.
 export const SWAP_STATUS_EVENT_ID = 'd22c6e22231865a341dd9e8111737245b0575a5a95e24793972c17f00292e9b5';
 export const REACTION_CD_POSTED = '📬';
-export const REACTION_CD_RECEIVED = '📀';
 
 // kind 31928: sender publishes postage cost for a specific recipient.
 //   signed by sender's anon keypair
@@ -75,12 +74,3 @@ export const KIND_CD_REVIEW = 31555;
 export const KIND_CD_LISTING = 30402;
 export const CD_LISTING_D_TAG = 'summerburn2026-cd';
 
-// Derives a deterministic anonymous pubkey for a recipient.
-// The organiser can re-derive the private key from the recipient's real pubkey to read DMs.
-// Derivation: sha256("summerburn2026:" + recipientPubkey) → use as secp256k1 privkey.
-export async function deriveAnonPubkey(recipientPubkey: string): Promise<string> {
-  const { getPublicKey } = await import('nostr-tools');
-  const data = new TextEncoder().encode(`summerburn2026:${recipientPubkey}`);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  return getPublicKey(new Uint8Array(hashBuffer));
-}

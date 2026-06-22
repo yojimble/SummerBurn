@@ -21,12 +21,19 @@ This app handles that in a few layers:
   feed and forum, uploading gallery art, publishing your gift as a listing, marking it as
   posted, and zapping — all signed with your real Nostr account. None of that needs to be
   anonymous, and being identifiable is what makes the social side fun.
-- **The anon identity is used for exactly two things: addresses, and optional feedback.**
+- **The anon identity is used for exactly three things: addresses, dispatch signals, and optional feedback.**
   From the Account page, each participant generates a disposable, one-off Nostr keypair
   that exists only for this swap, stored locally in their browser. It's used only to:
-  1. **Exchange postal addresses.** Send/receive your address as a NIP-17 private message,
-     wrapped per NIP-59, directly between anon keypairs — never your real account.
-  2. **Leave optional anonymous feedback.** A sender can upload a proof-of-postage receipt
+  1. **Exchange postal addresses.** Send/receive your address as a NIP-17 private direct
+     message (kind 14, sealed and gift-wrapped per NIP-59), routed between anon keypairs —
+     never your real account.
+  2. **Signal that your CDs have been posted.** A kind 7 reaction (📬) published from your
+     anon key to a shared anchor event lets the app show a live count of CDs in the post,
+     without revealing which participant it came from.
+  3. **Notify your sender when their CD arrives.** When a recipient marks a CD as received,
+     the app sends a NIP-17 private DM from the recipient's anon key to the sender's anon
+     key — so the sender gets a quiet notification without any public trace.
+  4. **Leave optional anonymous feedback.** A sender can upload a proof-of-postage receipt
      image signed by their anon key, so the recipient gets reassurance without learning
      who sent it.
 - **Encrypted matching links the two.** Once sign-ups close, the organiser runs the
@@ -68,6 +75,19 @@ participants engaged while they wait for the post to arrive:
 `scripts/match.mjs` runs the random matching once sign-ups close — see
 `MATCHING_INSTRUCTIONS.txt` for the full walkthrough (dry run first, then `--publish`).
 `scripts/create-event.mjs` publishes a NIP-52 calendar event for the swap date.
+
+### Blocking a pubkey
+
+To hide a listing from the gallery and exclude it from the published/posted stats, add the
+hex pubkey to `BLOCKED_PUBKEYS` in `src/lib/summerBurn.ts`:
+
+```ts
+export const BLOCKED_PUBKEYS = new Set([
+  'abc123...', // reason / display name
+]);
+```
+
+To convert an npub to hex: `node -e "const {nip19} = require('nostr-tools'); console.log(nip19.decode('npub1...').data)"`
 
 ## Tech stack
 

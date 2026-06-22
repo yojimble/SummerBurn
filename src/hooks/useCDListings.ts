@@ -1,6 +1,6 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
-import { HASHTAG, KIND_CD_LISTING } from '@/lib/summerBurn';
+import { HASHTAG, KIND_CD_LISTING, BLOCKED_PUBKEYS } from '@/lib/summerBurn';
 
 // Fetches all CD listings tagged for this event (active/for-sale and gallery-only),
 // one per author (latest version wins).
@@ -18,6 +18,7 @@ export function useCDListings() {
 
       const byPubkey = new Map<string, typeof events[number]>();
       for (const event of events) {
+        if (BLOCKED_PUBKEYS.has(event.pubkey)) continue;
         const existing = byPubkey.get(event.pubkey);
         if (!existing || event.created_at > existing.created_at) {
           byPubkey.set(event.pubkey, event);

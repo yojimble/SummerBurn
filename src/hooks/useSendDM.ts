@@ -45,13 +45,13 @@ export function useSendDM() {
   const { user } = useCurrentUser();
 
   return useMutation({
-    mutationFn: async ({ recipientPubkey, content }: { recipientPubkey: string; content: string }) => {
+    mutationFn: async ({ recipientPubkey, content, extraTags }: { recipientPubkey: string; content: string; extraTags?: string[][] }) => {
       if (!user) throw new Error('Must be logged in to send a DM');
 
       const rumor: Rumor = {
         kind: 14,
         content,
-        tags: [['p', recipientPubkey]],
+        tags: [['p', recipientPubkey], ...(extraTags ?? [])],
         created_at: Math.floor(Date.now() / 1000),
         pubkey: user.pubkey,
       };

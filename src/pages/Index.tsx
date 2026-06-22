@@ -42,12 +42,12 @@ const Index = () => {
   return (
     <Layout>
       {/* Hero */}
-      <section className="py-20 px-4 text-center">
+      <section className="pt-20 pb-2 px-4 text-center">
         <p className="text-5xl mb-6">🔥☀️💿⚡</p>
         <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight">
           Bitcoin Summer Burn 2026
         </h1>
-        <p className="text-xl text-muted-foreground max-w-xl mx-auto mb-2">
+        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-2">
           Community music swap event on Nostr.
         </p>
         <p className="text-lg font-semibold text-foreground mb-4">
@@ -70,7 +70,7 @@ const Index = () => {
         ) : (
           <p className="text-primary font-bold text-lg mb-6">It's time to burn! 🔥</p>
         )}
-        <p className="text-muted-foreground max-w-lg mx-auto mb-10 text-sm">
+        <p className="text-muted-foreground max-w-2xl mx-auto mb-10 text-sm">
           A real physical CD swap, coordinated on Nostr. Make your mix, burn three copies,
           post them to plebs. Receive CDs in return. Share your tracklist and artwork here.
         </p>
@@ -78,11 +78,11 @@ const Index = () => {
       </section>
 
       {/* How it works */}
-      <section className="container py-16 max-w-3xl">
+      <section className="container pt-2 pb-16 max-w-4xl">
         <h2 className="text-2xl font-bold mb-10 text-center">How it works</h2>
-        <div className="grid sm:grid-cols-4 gap-6 text-center">
+        <div className="grid sm:grid-cols-4 gap-10 text-center">
           <div className="space-y-3">
-            <div className="text-4xl">✅</div>
+            <div className="text-4xl">🎟️</div>
             <h3 className="font-semibold">1. RSVP</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Log in with Nostr and click RSVP. On July 21st you'll get the addresses of your three recipients.
@@ -92,22 +92,22 @@ const Index = () => {
             <div className="text-4xl">💿</div>
             <h3 className="font-semibold">2. Burn your CDs</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Make three identical copies of your summer mix. Include a tracklist — cover art is preferred.
+              Make three copies of your summer mix. Include a tracklist (+ cover art is preferred).
             </p>
           </div>
           <div className="space-y-3">
             <div className="text-4xl">📬</div>
             <h3 className="font-semibold">3. Post them out</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Send CDs to three anon recipients. Try to get them in the post within two weeks of July 21st.
+              Send CDs to your anon recipients. Try to get them in the post within two weeks of July 21st.
             </p>
           </div>
           <div className="space-y-3">
-            <div className="text-4xl">🎨</div>
-            <h3 className="font-semibold">4. Share here</h3>
+            <div className="text-4xl">📢</div>
+            <h3 className="font-semibold">4. Share</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Post your tracklist and cover art with{' '}
-              <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">#{HASHTAG}</code> so everyone can see.
+              Post your tracklist and cover art here.<br />Join the conversation on{' '}
+              <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">#{HASHTAG}</code>.
             </p>
           </div>
         </div>
@@ -115,7 +115,7 @@ const Index = () => {
 
       {/* Spirit */}
       <section className="py-14 px-4">
-        <div className="container max-w-2xl text-center space-y-4">
+        <div className="container max-w-4xl text-center space-y-4">
           <h2 className="text-xl font-bold">The Spirit of the Bitcoin Summer Burn</h2>
           <p className="text-muted-foreground leading-relaxed">
             Imagine yourself sitting in a field full of daisies and buttercups, troffing your way through a picnic
@@ -129,28 +129,22 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CD stats — only shown after event starts */}
-      {!countdown && cdStats && (cdStats.posted > 0 || cdStats.received > 0) && (
-        <section className="container py-4 max-w-3xl">
-          <div className="flex justify-center gap-8 text-center">
-            {cdStats.posted > 0 && (
-              <div>
-                <p className="text-2xl font-bold">{cdStats.posted}</p>
-                <p className="text-sm text-muted-foreground">📬 CDs in the post</p>
-              </div>
-            )}
-            {cdStats.received > 0 && (
-              <div>
-                <p className="text-2xl font-bold">{cdStats.received}</p>
-                <p className="text-sm text-muted-foreground">📀 CDs received</p>
-              </div>
-            )}
+      {/* CD stats */}
+      <section className="container py-4 max-w-4xl">
+        <div className="flex justify-center gap-8 text-center">
+          <div>
+            <p className="text-2xl font-bold">{cdStats?.published ?? 0}</p>
+            <p className="text-sm text-muted-foreground">📀 CDs published</p>
           </div>
-        </section>
-      )}
+          <div>
+            <p className="text-2xl font-bold">{(cdStats?.posted ?? 0) * 3}</p>
+            <p className="text-sm text-muted-foreground">📬 CDs in the post</p>
+          </div>
+        </div>
+      </section>
 
       {/* Attendees */}
-      <section className="container py-12 max-w-3xl">
+      <section className="container py-12 max-w-4xl">
         {isLoading ? (
           <div className="space-y-3">
             <Skeleton className="h-4 w-32" />

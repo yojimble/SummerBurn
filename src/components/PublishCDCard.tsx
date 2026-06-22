@@ -52,8 +52,21 @@ export function PublishCDCard() {
   const { user } = useCurrentUser();
   const { anonNsecHex, anonPubkey } = useAnonIdentity();
   const [isAnon, setIsAnon] = useState(false);
+
+  // Check both identities for an existing listing so we always edit the right one.
+  const { data: realListing, isLoading: realLoading } = useCDListing(user?.pubkey);
+  const { data: anonListing, isLoading: anonLoading } = useCDListing(anonPubkey ?? undefined);
+
+  // Once loaded, lock identity to whichever already has a listing.
+  useEffect(() => {
+    if (realLoading || anonLoading) return;
+    if (anonListing) setIsAnon(true);
+    else if (realListing) setIsAnon(false);
+  }, [realListing, anonListing, realLoading, anonLoading]);
+
   const activePubkey = isAnon && anonPubkey ? anonPubkey : user?.pubkey;
-  const { data: listing, isLoading } = useCDListing(activePubkey);
+  const listing = isAnon ? anonListing : realListing;
+  const isLoading = realLoading || anonLoading;
   const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
   const { mutateAsync: publish, isPending: isPublishing } = useNostrPublish();
   const queryClient = useQueryClient();
@@ -156,6 +169,7 @@ export function PublishCDCard() {
 
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listing', activePubkey ?? ''] });
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-listings'] });
+      queryClient.invalidateQueries({ queryKey: ['summerburn', 'cd-stats'] });
       toast({ title: 'CD listing published!' });
       if (isAnon) setShowLnDialog(true);
     } catch {
@@ -395,7 +409,7 @@ export function PublishCDCard() {
               </div>
             )}
 
-            {anonPubkey && <IdentityToggle anon={isAnon} onChange={setIsAnon} disabled={isPending} />}
+            {anonPubkey && !listing && <IdentityToggle anon={isAnon} onChange={setIsAnon} disabled={isPending} />}
 
             <Button
               className="w-full"

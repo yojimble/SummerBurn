@@ -6,7 +6,7 @@ import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { toast } from '@/hooks/useToast';
 import { RSVP_D_TAG, CALENDAR_EVENT_COORDINATE } from '@/lib/summerBurn';
 
-export function RSVPButton({ compact }: { compact?: boolean } = {}) {
+export function RSVPButton() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const { mutateAsync: publish } = useNostrPublish();
@@ -65,21 +65,14 @@ export function RSVPButton({ compact }: { compact?: boolean } = {}) {
   }
 
   if (rsvpLoading) {
-    return <Button size={compact ? 'sm' : 'lg'} disabled className={compact ? '' : 'px-8'}>Loading…</Button>;
+    return <Button size="sm" disabled>Loading…</Button>;
   }
 
   if (isRSVPd) {
     return (
-      <div className={`flex ${compact ? 'flex-row items-center gap-2' : 'flex-col items-center gap-2'}`}>
-        <p className={`text-green-600 dark:text-green-400 font-semibold ${compact ? 'text-sm' : 'text-lg'}`}>
-          ✓ {compact ? 'RSVPd' : "You're signed up!"}
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={isPending}
-          onClick={() => doRSVP('declined')}
-        >
+      <div className="flex flex-row items-center justify-center gap-3">
+        <p className="text-green-600 dark:text-green-400 font-semibold">✓ You're signed up!</p>
+        <Button variant="outline" size="sm" disabled={isPending} onClick={() => doRSVP('declined')}>
           {isPending ? 'Updating…' : 'Un-RSVP'}
         </Button>
       </div>
@@ -87,13 +80,8 @@ export function RSVPButton({ compact }: { compact?: boolean } = {}) {
   }
 
   return (
-    <Button
-      size={compact ? 'sm' : 'lg'}
-      disabled={isPending}
-      onClick={() => doRSVP('accepted')}
-      className={compact ? '' : 'px-8'}
-    >
-      {isPending ? 'RSVPing…' : compact ? '🔥 RSVP' : '🔥 RSVP for Bitcoin Summer Burn 2026'}
+    <Button size="lg" disabled={isPending} onClick={() => doRSVP('accepted')} className="px-8">
+      {isPending ? 'RSVPing…' : '🔥 RSVP for Bitcoin Summer Burn 2026'}
     </Button>
   );
 }
