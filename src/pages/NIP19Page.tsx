@@ -3,6 +3,9 @@ import { useParams } from 'react-router-dom';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { useSeoMeta } from '@unhead/react';
+import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
+import { NostrEmbed } from '@/components/NostrEmbed';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
 import { CDListingDetail } from '@/components/CDListingDetail';
@@ -126,6 +129,134 @@ function ProfilePage({ pubkey }: { pubkey: string }) {
   );
 }
 
+function ArticlePage({ kind, pubkey, identifier }: { kind: number; pubkey: string; identifier: string }) {
+  const { nostr } = useNostr();
+  const { data: author } = useAuthor(pubkey);
+
+  const { data: event, isLoading } = useQuery<NostrEvent | null>({
+    queryKey: ['naddr', kind, pubkey, identifier],
+    queryFn: async (c) => {
+      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
+      const [ev] = await nostr.query(
+        [{ kinds: [kind], authors: [pubkey], '#d': [identifier], limit: 1 }],
+        { signal },
+      );
+      return ev ?? null;
+    },
+    staleTime: 300000,
+  });
+
+  const title = event?.tags.find(([t]) => t === 'title')?.[1] ?? 'Article';
+  const image = event?.tags.find(([t]) => t === 'image')?.[1];
+  const summary = event?.tags.find(([t]) => t === 'summary')?.[1];
+  const publishedAt = event?.tags.find(([t]) => t === 'published_at')?.[1];
+  const name =
+    author?.metadata?.display_name ??
+    author?.metadata?.name ??
+    nip19.npubEncode(pubkey).slice(0, 12) + '…';
+
+  useSeoMeta({ title: `${title} — Bitcoin Summer Burn 2026`, description: summary });
+
+  const date = publishedAt
+    ? new Date(Number(publishedAt) * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    : event
+    ? new Date(event.created_at * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+    : null;
+
+  return (
+    <Layout>
+      <div className="container max-w-2xl py-8">
+        {isLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <Skeleton className="h-8 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <div className="space-y-2 pt-4">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}
+            </div>
+          </div>
+        ) : !event ? (
+          <p className="text-muted-foreground text-center py-20">Article not found.</p>
+        ) : (
+          <article className="space-y-6">
+            {image && (
+              <img src={image} alt={title} className="w-full max-h-72 object-cover rounded-lg" />
+            )}
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold leading-tight">{title}</h1>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Avatar className="h-6 w-6">
+                  <AvatarImage src={author?.metadata?.picture} alt={name} />
+                  <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                    {name.slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span>{name}</span>
+                {date && <><span>·</span><span>{date}</span></>}
+              </div>
+              {summary && <p className="text-muted-foreground leading-relaxed">{summary}</p>}
+            </div>
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkBreaks]}
+                urlTransform={(url) => url}
+                components={{
+                  a({ href, children }) {
+                    if (href?.startsWith('nostr:')) {
+                      return <NostrEmbed uri={href} />;
+                    }
+                    return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
+                  },
+                  p({ children }) {
+                    // Check if child is a plain nostr: URI text node
+                    if (typeof children === 'string' && children.startsWith('nostr:')) {
+                      return <NostrEmbed uri={children} />;
+                    }
+                    return <p>{children}</p>;
+                  },
+                }}
+              >
+                {/* Pre-process plain nostr: URIs into markdown links so ReactMarkdown picks them up */}
+                {event.content.replace(/(^|\s)(nostr:[a-zA-Z0-9]+)/g, '$1[$2]($2)')}
+              </ReactMarkdown>
+            </div>
+          </article>
+        )}
+      </div>
+    </Layout>
+  );
+}
+
+function SingleNotePage({ eventId }: { eventId: string }) {
+  const { nostr } = useNostr();
+
+  const { data: event, isLoading } = useQuery<NostrEvent | null>({
+    queryKey: ['note', eventId],
+    queryFn: async (c) => {
+      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
+      const [ev] = await nostr.query([{ kinds: [1], ids: [eventId], limit: 1 }], { signal });
+      return ev ?? null;
+    },
+    staleTime: 300000,
+  });
+
+  useSeoMeta({ title: 'Note — Bitcoin Summer Burn 2026' });
+
+  return (
+    <Layout>
+      <div className="container max-w-2xl py-8">
+        {isLoading ? (
+          <Card><CardContent className="p-4"><Skeleton className="h-24 w-full" /></CardContent></Card>
+        ) : event ? (
+          <PostCard event={event} />
+        ) : (
+          <p className="text-muted-foreground text-center py-20">Note not found.</p>
+        )}
+      </div>
+    </Layout>
+  );
+}
+
 export function NIP19Page() {
   const { nip19: identifier } = useParams<{ nip19: string }>();
 
@@ -150,12 +281,10 @@ export function NIP19Page() {
     }
 
     case 'note':
-      // AI agent should implement note view here
-      return <div>Note placeholder</div>;
+      return <SingleNotePage eventId={decoded.data} />;
 
     case 'nevent':
-      // AI agent should implement event view here
-      return <div>Event placeholder</div>;
+      return <SingleNotePage eventId={decoded.data.id} />;
 
     case 'naddr':
       if (decoded.data.kind === KIND_CD_LISTING) {
@@ -165,7 +294,13 @@ export function NIP19Page() {
           </Layout>
         );
       }
-      return <div>Addressable event placeholder</div>;
+      return (
+        <ArticlePage
+          kind={decoded.data.kind}
+          pubkey={decoded.data.pubkey}
+          identifier={decoded.data.identifier}
+        />
+      );
 
     default:
       return <NotFound />;

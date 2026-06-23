@@ -13,7 +13,6 @@ import { AnonZapButton } from '@/components/AnonZapButton';
 import { PostageReceiptUpload } from '@/components/PostageReceiptUpload';
 import { PublishCDCard } from '@/components/PublishCDCard';
 import { RSVPButton } from '@/components/RSVPButton';
-import { CDReceivedButton } from '@/components/CDReceivedButton';
 import { OrganizerTools } from '@/components/OrganizerTools';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -197,7 +196,6 @@ const Account = () => {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <CDReceivedButton senderAnonPubkey={senderAnonPubkey} />
                           <AnonZapButton anonPubkey={senderAnonPubkey} label={`Burner ${nip19.npubEncode(senderAnonPubkey).slice(5, 13)}`} />
                         </div>
                       </div>

@@ -1,11 +1,20 @@
 import { useSeoMeta } from '@unhead/react';
+import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { PostCard } from '@/components/PostCard';
 import { useFeed } from '@/hooks/useFeed';
 import { useRSVPs } from '@/hooks/useRSVPs';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useUploadFile } from '@/hooks/useUploadFile';
+import { toast } from '@/hooks/useToast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { HASHTAG, ORGANIZER_PUBKEY } from '@/lib/summerBurn';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { ImagePlus, X } from 'lucide-react';
+import { HASHTAG, ORGANIZER_PUBKEY, isPermittedPoster } from '@/lib/summerBurn';
 
 const Feed = () => {
   useSeoMeta({
@@ -15,8 +24,54 @@ const Feed = () => {
 
   const { data: allPosts, isLoading: postsLoading } = useFeed();
   const { data: rsvps, isLoading: rsvpsLoading } = useRSVPs();
+  const { user } = useCurrentUser();
+  const { mutateAsync: publish, isPending: isPosting } = useNostrPublish();
+  const { mutateAsync: uploadFile, isPending: isUploading } = useUploadFile();
+  const queryClient = useQueryClient();
+  const [postContent, setPostContent] = useState('');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = postsLoading || rsvpsLoading;
+  const canPost = isPermittedPoster(user?.pubkey, rsvps?.pubkeys);
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImagePreview(URL.createObjectURL(file));
+    try {
+      const tags = await uploadFile(file);
+      const url = tags.find(([name]) => name === 'url')?.[1];
+      if (!url) throw new Error('No URL returned');
+      setImageUrl(url);
+    } catch {
+      toast({ title: 'Image upload failed', description: 'Please try again.' });
+      setImagePreview(null);
+    }
+    e.target.value = '';
+  };
+
+  const clearImage = () => {
+    setImagePreview(null);
+    setImageUrl(null);
+  };
+
+  const handlePost = async () => {
+    if (!postContent.trim() && !imageUrl) return;
+    try {
+      const content = imageUrl
+        ? postContent.trim() ? `${postContent.trim()}\n\n${imageUrl}` : imageUrl
+        : postContent.trim();
+      await publish({ kind: 1, content, tags: [['t', HASHTAG]] });
+      queryClient.invalidateQueries({ queryKey: ['summerburn', 'feed'] });
+      toast({ title: 'Posted!' });
+      setPostContent('');
+      clearImage();
+    } catch {
+      toast({ title: 'Failed to post', description: 'Please try again.' });
+    }
+  };
 
   // Only show posts from RSVPed users (plus the organiser, who isn't RSVPed)
   const posts =
@@ -35,6 +90,65 @@ const Feed = () => {
             from RSVPed Burners
           </p>
         </div>
+
+        {canPost && (
+          <div className="mb-6 space-y-2">
+            <Textarea
+              placeholder="What's on your mind?"
+              value={postContent}
+              onChange={(e) => setPostContent(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+            {imagePreview && (
+              <div className="relative inline-block">
+                <img src={imagePreview} alt="Preview" className="max-h-48 rounded-lg border border-border object-cover" />
+                {isUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-lg">
+                    <span className="text-xs text-muted-foreground">Uploading…</span>
+                  </div>
+                )}
+                {!isUploading && (
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute -top-2 -right-2 bg-background border border-border rounded-full p-0.5 hover:bg-muted"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading || !!imagePreview}
+                >
+                  <ImagePlus className="h-4 w-4 mr-1" />
+                  Image
+                </Button>
+              </div>
+              <Button
+                onClick={handlePost}
+                disabled={isPosting || isUploading || (!postContent.trim() && !imageUrl)}
+                size="sm"
+              >
+                {isPosting ? 'Posting…' : 'Post'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="space-y-4">

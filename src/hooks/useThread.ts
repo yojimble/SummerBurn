@@ -14,7 +14,14 @@ export function useThread(rootId: string) {
         nostr.query([{ kinds: [1], '#e': [rootId], limit: 500 }], { signal }),
       ]);
       const root = rootEvents[0] ?? null;
-      const replies = replyEvents.sort((a, b) => a.created_at - b.created_at);
+      const replies = replyEvents
+        .filter((e) => {
+          const rootRefs = e.tags.filter(([n, id]) => n === 'e' && id === rootId);
+          // Exclude quote-reposts: events where every reference to the root is marked 'mention'
+          if (rootRefs.length > 0 && rootRefs.every(([,,,m]) => m === 'mention')) return false;
+          return true;
+        })
+        .sort((a, b) => a.created_at - b.created_at);
       return { root, replies };
     },
     staleTime: 15000,

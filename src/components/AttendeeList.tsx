@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthor } from '@/hooks/useAuthor';
 import { nip19 } from 'nostr-tools';
+import { Link } from 'react-router-dom';
 import type { NostrEvent } from '@nostrify/nostrify';
 
 function Attendee({ pubkey }: { pubkey: string }) {
@@ -10,19 +11,20 @@ function Attendee({ pubkey }: { pubkey: string }) {
     data?.metadata?.name ??
     nip19.npubEncode(pubkey).slice(0, 12) + '…';
   const picture = data?.metadata?.picture;
+  const npub = nip19.npubEncode(pubkey);
 
   return (
-    <div className="flex flex-col items-center gap-1 w-16" title={name}>
-      <Avatar className="h-10 w-10 ring-2 ring-background">
+    <Link to={`/${npub}`} className="flex flex-col items-center gap-1 w-16 group" title={name}>
+      <Avatar className="h-10 w-10 ring-2 ring-background group-hover:ring-primary transition-all">
         <AvatarImage src={picture} alt={name} />
         <AvatarFallback className="text-xs bg-primary/10 text-primary">
           {name.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      <span className="text-xs text-muted-foreground text-center truncate w-full leading-tight">
+      <span className="text-xs text-muted-foreground text-center truncate w-full leading-tight group-hover:text-foreground transition-colors">
         {name}
       </span>
-    </div>
+    </Link>
   );
 }
 
