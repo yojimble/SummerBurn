@@ -196,7 +196,7 @@ function ArticlePage({ kind, pubkey, identifier }: { kind: number; pubkey: strin
               </div>
               {summary && <p className="text-muted-foreground leading-relaxed">{summary}</p>}
             </div>
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+            <div className="article-body">
               <ReactMarkdown
                 remarkPlugins={[remarkBreaks]}
                 urlTransform={(url) => url}
