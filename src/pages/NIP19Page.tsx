@@ -3,9 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { useSeoMeta } from '@unhead/react';
-import ReactMarkdown from 'react-markdown';
-import remarkBreaks from 'remark-breaks';
-import { NostrEmbed } from '@/components/NostrEmbed';
+import { NostrMarkdown } from '@/components/NostrMarkdown';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { Layout } from '@/components/Layout';
 import { CDListingDetail } from '@/components/CDListingDetail';
@@ -197,28 +195,7 @@ function ArticlePage({ kind, pubkey, identifier }: { kind: number; pubkey: strin
               {summary && <p className="text-muted-foreground leading-relaxed">{summary}</p>}
             </div>
             <div className="article-body">
-              <ReactMarkdown
-                remarkPlugins={[remarkBreaks]}
-                urlTransform={(url) => url}
-                components={{
-                  a({ href, children }) {
-                    if (href?.startsWith('nostr:')) {
-                      return <NostrEmbed uri={href} />;
-                    }
-                    return <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
-                  },
-                  p({ children }) {
-                    // Check if child is a plain nostr: URI text node
-                    if (typeof children === 'string' && children.startsWith('nostr:')) {
-                      return <NostrEmbed uri={children} />;
-                    }
-                    return <p>{children}</p>;
-                  },
-                }}
-              >
-                {/* Pre-process plain nostr: URIs into markdown links so ReactMarkdown picks them up */}
-                {event.content.replace(/(^|\s)(nostr:[a-zA-Z0-9]+)/g, '$1[$2]($2)')}
-              </ReactMarkdown>
+              <NostrMarkdown content={event.content} />
             </div>
           </article>
         )}

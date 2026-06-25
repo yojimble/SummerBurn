@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useMixRegistration } from '@/hooks/useMixRegistration';
 import { toast } from '@/hooks/useToast';
 import { RSVP_D_TAG, CALENDAR_EVENT_COORDINATE } from '@/lib/summerBurn';
 
@@ -28,8 +29,13 @@ export function RSVPButton() {
 
   const isRSVPd = myRSVP?.tags.find(([n]) => n === 'status')?.[1] === 'accepted';
 
+  const { sendRemove, hasAnonIdentity } = useMixRegistration();
+
   const { mutate: doRSVP, isPending } = useMutation({
     mutationFn: async (status: 'accepted' | 'declined') => {
+      if (status === 'declined' && hasAnonIdentity) {
+        await sendRemove().catch(() => {}); // best effort
+      }
       if (!CALENDAR_EVENT_COORDINATE) throw new Error('Calendar event not set up yet.');
       await publish({
         kind: 31925,

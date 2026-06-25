@@ -65,6 +65,18 @@ function NaddrEmbed({ kind, pubkey, identifier }: { kind: number; pubkey: string
   return <EmbedShell event={event} />;
 }
 
+const EMBED_IMAGE_REGEX = /\.(png|jpe?g|gif|webp|avif)(\?\S*)?$/i;
+const EMBED_URL_REGEX = /(https?:\/\/\S+)/g;
+
+function extractFirstImage(content: string): string | undefined {
+  const urls = content.match(EMBED_URL_REGEX) ?? [];
+  return urls.find(u => EMBED_IMAGE_REGEX.test(u));
+}
+
+function stripImageUrls(content: string): string {
+  return content.replace(EMBED_URL_REGEX, u => EMBED_IMAGE_REGEX.test(u) ? '' : u).trim();
+}
+
 // ── Shared embed shell ────────────────────────────────────────────────────────
 
 function EmbedShell({ event, loading }: { event?: NostrEvent; loading?: boolean }) {
@@ -76,32 +88,41 @@ function EmbedShell({ event, loading }: { event?: NostrEvent; loading?: boolean 
 
   const title = event?.tags.find(([t]) => t === 'title')?.[1];
   const summary = event?.tags.find(([t]) => t === 'summary')?.[1];
-  const image = event?.tags.find(([t]) => t === 'image')?.[1];
+  const tagImage = event?.tags.find(([t]) => t === 'image')?.[1];
   const isArticle = event && (event.kind === 30023 || event.kind === 30024);
 
-  const previewText = summary ?? (event?.content.slice(0, 200) + (event?.content.length ?? 0 > 200 ? '…' : ''));
+  const contentImage = event && !isArticle ? extractFirstImage(event.content) : undefined;
+  const embedImage = tagImage ?? contentImage;
+
+  const rawText = summary ?? (event ? stripImageUrls(event.content) : '');
+  const previewText = rawText.slice(0, 200) + (rawText.length > 200 ? '…' : '');
 
   return (
-    <div className="my-2 rounded-lg border border-border bg-muted/40 overflow-hidden text-sm">
+    <div className="mb-2 rounded-lg border border-border bg-muted/40 overflow-hidden text-sm">
       {loading ? (
         <div className="p-3 text-muted-foreground text-xs animate-pulse">Loading…</div>
       ) : (
-        <div className="flex gap-3 p-3">
-          {image && isArticle && (
-            <img src={image} alt="" className="w-16 h-16 rounded object-cover shrink-0" />
-          )}
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex items-center gap-1.5">
-              <Avatar className="h-4 w-4">
-                <AvatarImage src={author?.metadata?.picture} />
-                <AvatarFallback className="text-[8px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <span className="text-xs text-muted-foreground truncate">{name}</span>
-              {isArticle && <span className="text-xs text-muted-foreground">· Article</span>}
+        <div>
+          <div className="flex gap-3 p-3">
+            {embedImage && isArticle && (
+              <img src={embedImage} alt="" className="w-16 h-16 rounded object-cover shrink-0" />
+            )}
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-1.5">
+                <Avatar className="h-4 w-4">
+                  <AvatarImage src={author?.metadata?.picture} />
+                  <AvatarFallback className="text-[8px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-muted-foreground truncate">{name}</span>
+                {isArticle && <span className="text-xs text-muted-foreground">· Article</span>}
+              </div>
+              {title && <p className="font-semibold leading-snug line-clamp-2">{title}</p>}
+              {previewText && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{previewText}</p>}
             </div>
-            {title && <p className="font-semibold leading-snug line-clamp-2">{title}</p>}
-            {previewText && <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{previewText}</p>}
           </div>
+          {embedImage && !isArticle && (
+            <img src={embedImage} alt="" className="w-full max-h-96 object-contain" />
+          )}
         </div>
       )}
     </div>

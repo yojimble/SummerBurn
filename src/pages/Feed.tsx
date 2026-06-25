@@ -61,7 +61,7 @@ const Feed = () => {
     if (!postContent.trim() && !imageUrl) return;
     try {
       const content = imageUrl
-        ? postContent.trim() ? `${postContent.trim()}\n\n${imageUrl}` : imageUrl
+        ? postContent.trim() ? `${postContent.trim()}\n${imageUrl}` : imageUrl
         : postContent.trim();
       await publish({ kind: 1, content, tags: [['t', HASHTAG]] });
       queryClient.invalidateQueries({ queryKey: ['summerburn', 'feed'] });

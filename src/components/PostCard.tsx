@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { NostrMarkdown } from '@/components/NostrMarkdown';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -10,7 +11,7 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { useThread } from '@/hooks/useThread';
 import { useRSVPs } from '@/hooks/useRSVPs';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { isPermittedPoster } from '@/lib/summerBurn';
+import { isPermittedPoster, CD_LISTING_D_TAG } from '@/lib/summerBurn';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 
@@ -197,6 +198,7 @@ function ThreadedReplies({
 
 function ArticleCard({ event }: { event: NostrEvent }) {
   const { data } = useAuthor(event.pubkey);
+
   const name =
     data?.metadata?.display_name ??
     data?.metadata?.name ??
@@ -214,11 +216,8 @@ function ArticleCard({ event }: { event: NostrEvent }) {
   });
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      {image && (
-        <img src={image} alt={title ?? ''} className="w-full max-h-48 object-cover rounded-t-lg" />
-      )}
-      <CardContent className="px-4 py-4 space-y-3">
+    <Card className="hover:shadow-md transition-shadow gap-0 py-0">
+      <CardContent className="px-4 py-4 space-y-2">
         <div className="flex items-center gap-2">
           <Avatar className="h-6 w-6">
             <AvatarImage src={data?.metadata?.picture} alt={name} />
@@ -229,16 +228,66 @@ function ArticleCard({ event }: { event: NostrEvent }) {
           <span className="text-xs text-muted-foreground">{name} · {timeAgo(event.created_at)}</span>
           <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded ml-auto">Article</span>
         </div>
-        {title && <h3 className="font-bold text-base leading-snug">{title}</h3>}
-        {excerpt && (
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">{excerpt}</p>
-        )}
-        <a
-          href={`/${naddr}`}
-          className="text-xs text-primary hover:underline"
-        >
-          Read full article →
-        </a>
+        <div className="relative h-[400px] overflow-hidden">
+          <div className="space-y-2">
+            {image && (
+              <img src={image} alt={title ?? ''} className="w-full max-h-96 object-cover rounded-md" />
+            )}
+            {title && <h3 className="font-bold text-base leading-snug">{title}</h3>}
+            <NostrMarkdown content={event.content} className="text-sm text-muted-foreground leading-relaxed prose prose-sm max-w-none" />
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-card to-transparent flex items-end justify-center pb-3">
+            <a href={`/${naddr}`} className="text-sm font-semibold text-primary hover:underline">
+              Read more →
+            </a>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── CDListingFeedCard (kind 30402) ────────────────────────────────────────────
+
+function CDListingFeedCard({ event }: { event: NostrEvent }) {
+  const { data } = useAuthor(event.pubkey);
+  const name =
+    data?.metadata?.display_name ??
+    data?.metadata?.name ??
+    nip19.npubEncode(event.pubkey).slice(0, 12) + '…';
+
+  const title = event.tags.find(([t]) => t === 'title')?.[1] ?? 'Untitled CD';
+  const image = event.tags.find(([t]) => t === 'image')?.[1];
+  const description = event.tags.find(([t]) => t === 'summary')?.[1] ?? event.content.slice(0, 200);
+  const offersExtra = event.tags.some(([t, v]) => t === 'status' && v === 'active');
+
+  const naddr = nip19.naddrEncode({ kind: 30402, pubkey: event.pubkey, identifier: CD_LISTING_D_TAG });
+
+  return (
+    <Card className="hover:shadow-md transition-shadow gap-0 py-0">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={data?.metadata?.picture} alt={name} />
+            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+              {name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm leading-none truncate">{name}</p>
+            <p className="text-xs text-muted-foreground mt-1">{timeAgo(event.created_at)}</p>
+          </div>
+          <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded ml-auto">CD Listing</span>
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-3">
+        {image && <img src={image} alt={title} className="rounded-md h-[400px] w-full object-cover" loading="lazy" />}
+        <div>
+          <p className="font-semibold text-sm">{title}</p>
+          {offersExtra && <p className="text-xs text-primary mt-0.5">📬 Offering extra copies</p>}
+          {description && <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{description}</p>}
+        </div>
+        <a href={`/${naddr}`} className="text-xs text-primary hover:underline block">View listing →</a>
       </CardContent>
     </Card>
   );
@@ -248,6 +297,7 @@ function ArticleCard({ event }: { event: NostrEvent }) {
 
 export function PostCard({ event }: { event: NostrEvent }) {
   if (event.kind === 30023) return <ArticleCard event={event} />;
+  if (event.kind === 30402) return <CDListingFeedCard event={event} />;
 
   const { data } = useAuthor(event.pubkey);
   const { user } = useCurrentUser();
@@ -268,7 +318,7 @@ export function PostCard({ event }: { event: NostrEvent }) {
   const tree = expanded ? buildTree(replies, event.id) : [];
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-md transition-shadow gap-0 py-0">
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">

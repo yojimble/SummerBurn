@@ -14,6 +14,7 @@ import { PostageReceiptUpload } from '@/components/PostageReceiptUpload';
 import { PublishCDCard } from '@/components/PublishCDCard';
 import { RSVPButton } from '@/components/RSVPButton';
 import { OrganizerTools } from '@/components/OrganizerTools';
+import { MixInbox } from '@/components/MixInbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,7 +136,10 @@ const Account = () => {
         </div>
 
         {user.pubkey === ORGANIZER_PUBKEY ? (
-          <OrganizerTools />
+          <>
+            <OrganizerTools />
+            <MixInbox />
+          </>
         ) : (<>
 
         {/* Anon identity */}

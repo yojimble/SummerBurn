@@ -64,18 +64,14 @@ const FAQ = () => {
             q="How does the anonymous matching work?"
             a={
               <>
-                When you RSVP, the site generates a fresh anonymous keypair just for you — a separate Nostr
-                identity that has nothing to do with your real account. This anon keypair is what your recipients
-                see when they receive their match; they know a CD is coming from someone in the swap, but they
-                don't know it's you unless you choose to tell them.
+                When you RSVP, the site generates a fresh anonymous keypair just for this match — a separate Nostr
+                identity that has nothing to do with your real account.
                 <br /><br />
-                Your postal address is sent as an encrypted DM <em>to your recipients' anon keypairs</em>, so
-                it's never publicly linked to your real Nostr identity. The only person who ever sees the
-                connection between your real account and your anon keypair is the organiser, who needs it to
-                send you your match.
+                Your postal address is sent as an encrypted DM <em>from your anon keypair to your recipients' anon keypairs</em>. Nobody — including the organiser — can
+                link your anon keypair back to your real account.
                 <br /><br />
-                The anon keypair is stored in your browser. Don't clear your local storage before the swap is
-                done — you need it to receive your match and read your address DMs.
+                The anon keypair is stored in your browser and privately DM'd to your real Nostr account for
+                safekeeping. If you clear your local storage, you can recover it from your DMs.
               </>
             }
           />

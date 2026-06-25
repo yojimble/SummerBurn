@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useMixRegistration } from '@/hooks/useMixRegistration';
 import { toast } from '@/hooks/useToast';
 import { hexToBytes, bytesToHex } from '@/lib/utils';
-import { ORGANIZER_PUBKEY } from '@/lib/summerBurn';
 
 export function AnonIdentityCard() {
   const { nostr } = useNostr();
@@ -19,8 +18,9 @@ export function AnonIdentityCard() {
   const { anonNsecHex, anonPubkey, anonNpub, generate, restore } = useAnonIdentity();
   const [restoreInput, setRestoreInput] = useState('');
   const [showRestore, setShowRestore] = useState(false);
+  const [showMixConfirm, setShowMixConfirm] = useState(false);
   const [open, setOpen] = useState(false);
-  const { mutateAsync: publish, isPending } = useNostrPublish();
+  const [isPending, setIsPending] = useState(false);
 
   const sendBackupDM = async (nsecHex: string) => {
     if (!user?.signer.nip44) return;
@@ -31,24 +31,28 @@ export function AnonIdentityCard() {
     const message =
       `Bitcoin Summer Burn 2026 — anon identity backup\n\nAnon npub: ${npub}\nAnon nsec: ${nsecBech32}\n\nThis is a backup in case you switch devices or clear your browser. Keep it safe.`;
 
-    // Gift wrap (NIP-59): rumor → seal (signer) → wrap (random ephemeral key)
+    // Gift wrap (NIP-59): rumor → seal (anon key) → wrap (random ephemeral key)
+    const anonPrivkey = hexToBytes(nsecHex);
     const rumor = {
       kind: 14,
       content: message,
       tags: [['p', user.pubkey]],
       created_at: Math.floor(Date.now() / 1000),
-      pubkey: user.pubkey,
+      pubkey,
     };
     const { getEventHash } = await import('nostr-tools/pure');
     (rumor as any).id = getEventHash(rumor as any);
 
-    const sealContent = await user.signer.nip44.encrypt(user.pubkey, JSON.stringify(rumor));
-    const seal = await user.signer.signEvent({
+    const sealContent = nip44.v2.encrypt(
+      JSON.stringify(rumor),
+      nip44.v2.utils.getConversationKey(anonPrivkey, user.pubkey),
+    );
+    const seal = finalizeEvent({
       kind: 13,
       content: sealContent,
       tags: [],
       created_at: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 172800),
-    });
+    }, anonPrivkey);
 
     const wrapKey = generateSecretKey();
     const convKey = nip44.v2.utils.getConversationKey(wrapKey, user.pubkey);
@@ -63,46 +67,60 @@ export function AnonIdentityCard() {
     await nostr.event(wrap, { signal: AbortSignal.timeout(5000) });
   };
 
+  const { sendAdd, sendRemove } = useMixRegistration();
+
   const handleGenerate = async () => {
     if (anonNsecHex) {
       if (!confirm('This will replace your current anon identity. Continue?')) return;
     }
+    const oldNsecHex = anonNsecHex;
+    const oldPubkey = anonPubkey;
+    const oldNpub = anonNpub;
     const newHex = generate();
-
-    if (user) {
-      try {
-        await sendBackupDM(newHex);
-
-        if (ORGANIZER_PUBKEY && user.signer.nip44) {
-          const { getPublicKey } = await import('nostr-tools');
-          const newPubkey = getPublicKey(hexToBytes(newHex));
-          const encrypted = await user.signer.nip44.encrypt(
-            ORGANIZER_PUBKEY,
-            JSON.stringify({ anonPubkey: newPubkey }),
-          );
-          await publish({ kind: 4, content: encrypted, tags: [['p', ORGANIZER_PUBKEY]] });
-        }
-
-        toast({
-          title: 'Anon identity ready',
-          description: "Your browser has saved your key, and we've sent a backup to your Nostr DMs.",
-        });
-      } catch {
-        toast({
-          title: 'Anon identity created',
-          description: 'Saved in your browser. DM backup failed — use the button below to retry.',
-        });
+    setIsPending(true);
+    try {
+      if (oldNsecHex && oldPubkey && oldNpub) {
+        await sendRemove();
       }
+      await sendBackupDM(newHex);
+      toast({
+        title: 'Anon identity ready',
+        description: "Your browser has saved your key, and we've sent a backup to your Nostr DMs.",
+      });
+    } catch {
+      toast({
+        title: 'Anon identity created',
+        description: 'Saved in your browser. DM backup failed — use the button below to retry.',
+      });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const handleAddToMix = async () => {
+    if (!anonNsecHex || !anonPubkey || !anonNpub) return;
+    setIsPending(true);
+    try {
+      await sendAdd();
+      setShowMixConfirm(false);
+      toast({ title: "You're in the mix!", description: 'The organiser has your anon npub.' });
+    } catch {
+      toast({ title: 'Failed', description: 'Could not send to organiser. Try again.' });
+    } finally {
+      setIsPending(false);
     }
   };
 
   const handleBackup = async () => {
     if (!user || !anonNsecHex) return;
+    setIsPending(true);
     try {
       await sendBackupDM(anonNsecHex);
       toast({ title: 'Backup sent!', description: 'Check your Nostr DMs — encrypted, only you can read it.' });
     } catch {
       toast({ title: 'Backup failed', description: 'Make sure your signer supports NIP-44.' });
+    } finally {
+      setIsPending(false);
     }
   };
 
@@ -195,6 +213,9 @@ export function AnonIdentityCard() {
               check there if you ever switch devices.
             </p>
             <div className="flex gap-2 flex-wrap">
+              <Button size="sm" onClick={() => setShowMixConfirm(v => !v)} disabled={isPending}>
+                Add me to the mix
+              </Button>
               <Button variant="outline" size="sm" onClick={handleBackup} disabled={isPending}>
                 {isPending ? 'Sending…' : 'Re-send backup DM'}
               </Button>
@@ -202,6 +223,15 @@ export function AnonIdentityCard() {
                 Regenerate
               </Button>
             </div>
+            {showMixConfirm && (
+              <div className="rounded-md border border-border bg-muted/40 p-3 space-y-3">
+                <p className="text-xs text-muted-foreground">This npub will be sent to the organiser as a gift-wrapped DM:</p>
+                <p className="font-mono text-xs break-all bg-muted p-2 rounded">ADD<br />{anonNpub}</p>
+                <Button size="sm" onClick={handleAddToMix} disabled={isPending} className="w-full">
+                  {isPending ? 'Sending…' : 'Send DM to join the matching list anonymously'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </CollapsibleContent>
       </Card>
