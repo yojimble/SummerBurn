@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createHead, UnheadProvider } from '@unhead/react/client';
 import { InferSeoMetaPlugin } from 'unhead/plugins';
 import { Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import NostrProvider from '@/components/NostrProvider';
 import { NostrSync } from '@/components/NostrSync';
 import { Toaster } from "@/components/ui/toaster";
@@ -63,6 +64,7 @@ export function App() {
           </NostrLoginProvider>
         </QueryClientProvider>
       </AppProvider>
+      <Analytics />
     </UnheadProvider>
   );
 }
