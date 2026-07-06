@@ -8,7 +8,7 @@ import { useCDStats } from '@/hooks/useCDStats';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HASHTAG, EVENT_START_DATE } from '@/lib/summerBurn';
 
-const EVENT_TARGET = new Date('2026-07-21T00:00:00');
+const EVENT_TARGET = new Date('2026-07-21T00:00:00Z');
 
 function useCountdown() {
   const [timeLeft, setTimeLeft] = useState(() => EVENT_TARGET.getTime() - Date.now());

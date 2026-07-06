@@ -98,7 +98,7 @@ const Feed = () => {
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
               rows={3}
-              className="resize-none"
+              className="resize-none bg-white"
             />
             {imagePreview && (
               <div className="relative inline-block">

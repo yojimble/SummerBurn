@@ -224,7 +224,7 @@
   ul   { @apply list-disc pl-5 mb-4 space-y-1; }
   ol   { @apply list-decimal pl-5 mb-4 space-y-1; }
   li   { @apply leading-relaxed; }
-  a    { @apply underline underline-offset-2 hover:text-primary; }
+  a    { @apply underline underline-offset-2 text-primary hover:opacity-80; }
   blockquote { @apply border-l-4 border-border pl-4 italic text-muted-foreground my-4; }
   code { @apply bg-muted px-1 py-0.5 rounded text-xs font-mono; }
   pre  { @apply bg-muted rounded-lg p-4 overflow-x-auto mb-4; }
