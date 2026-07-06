@@ -15,6 +15,7 @@ import { isPermittedPoster, CD_LISTING_D_TAG } from '@/lib/summerBurn';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { MediaPlayer } from '@/components/MediaPlayer';
+import { LinkPreviewCard } from '@/components/LinkPreviewCard';
 
 const TOKEN_REGEX = /(https?:\/\/\S+|nostr:[a-zA-Z0-9]+)/g;
 const IMAGE_EXT_REGEX = /\.(png|jpe?g|gif|webp|avif)(\?\S*)?$/i;
@@ -39,17 +40,7 @@ function renderContent(content: string) {
       );
     }
     if (part.startsWith('http')) {
-      return (
-        <a
-          key={i}
-          href={part}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline underline-offset-2 hover:text-foreground"
-        >
-          {part}
-        </a>
-      );
+      return <LinkPreviewCard key={i} url={part} />;
     }
     if (part.startsWith('nostr:')) {
       return <NostrEmbed key={i} uri={part} />;
