@@ -38,7 +38,7 @@ export function AttendeeList({ events, count }: AttendeeListProps) {
 
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+      <h3 className="font-bold text-sm text-foreground uppercase tracking-wide">
         {count} {count === 1 ? 'Burner' : 'Burners'} signed up
       </h3>
       <div className="flex flex-wrap gap-4">

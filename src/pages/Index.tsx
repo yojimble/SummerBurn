@@ -42,15 +42,18 @@ const Index = () => {
   return (
     <Layout>
       {/* Hero */}
-      <section className="pt-20 pb-2 px-4 text-center">
-        <p className="text-5xl mb-6">🔥☀️💿⚡</p>
-        <h1 className="text-4xl sm:text-5xl font-bold mb-4 tracking-tight">
-          Bitcoin Summer Burn 2026
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-2">
-          Community music swap event on Nostr.
+      <section className="pt-10 pb-2 px-4 text-center">
+        <div className="bg-[#08b9e3] py-8 px-4 mb-8 -mx-4 sm:mx-0">
+          <img
+            src="/banner.png"
+            alt="Bitcoin Summer Burn 2026"
+            className="mx-auto w-full max-w-2xl h-auto"
+          />
+        </div>
+        <p className="font-heading font-bold text-xl text-foreground max-w-2xl mx-auto mb-2">
+          Community music swap event on Nostr
         </p>
-        <p className="text-lg font-semibold text-foreground mb-4">
+        <p className="font-heading text-lg font-semibold text-muted-foreground mb-4">
           Starts {EVENT_START_DATE}
         </p>
         {countdown ? (
@@ -61,8 +64,8 @@ const Index = () => {
               { value: countdown.minutes, label: 'mins' },
               { value: countdown.seconds, label: 'secs' },
             ].map(({ value, label }) => (
-              <div key={label} className="flex flex-col items-center bg-background/70 rounded-xl px-4 py-2 min-w-[60px] shadow-sm border border-border">
-                <span className="text-2xl font-bold tabular-nums">{String(value).padStart(2, '0')}</span>
+              <div key={label} className="flex flex-col items-center bg-background rounded-xl px-4 py-2 min-w-[60px] shadow-sm border border-border">
+                <span className="text-2xl font-heading tabular-nums">{String(value).padStart(2, '0')}</span>
                 <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
               </div>
             ))}
@@ -133,11 +136,11 @@ const Index = () => {
       <section className="container py-4 max-w-4xl">
         <div className="flex justify-center gap-8 text-center">
           <div>
-            <p className="text-2xl font-bold">{cdStats?.published ?? 0}</p>
+            <p className="text-2xl font-heading">{cdStats?.published ?? 0}</p>
             <p className="text-sm text-muted-foreground">📀 CDs published</p>
           </div>
           <div>
-            <p className="text-2xl font-bold">{(cdStats?.posted ?? 0) * 3}</p>
+            <p className="text-2xl font-heading">{(cdStats?.posted ?? 0) * 3}</p>
             <p className="text-sm text-muted-foreground">📬 CDs in the post</p>
           </div>
         </div>

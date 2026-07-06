@@ -86,7 +86,7 @@ export function RSVPButton() {
   }
 
   return (
-    <Button size="lg" disabled={isPending} onClick={() => doRSVP('accepted')} className="px-8">
+    <Button size="lg" disabled={isPending} onClick={() => doRSVP('accepted')} className="px-8 font-heading">
       {isPending ? 'RSVPing…' : '🔥 RSVP for Bitcoin Summer Burn 2026'}
     </Button>
   );

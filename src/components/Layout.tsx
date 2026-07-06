@@ -17,13 +17,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const navLinks = user ? [...baseLinks, { to: '/account', label: 'My Account' }] : baseLinks;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-amber-50 to-background dark:from-amber-950/20">
-      <header className="border-b border-border sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="min-h-screen flex flex-col bg-gradient-to-t from-white/80 to-transparent bg-background">
+      <header className="border-b border-border sticky top-0 z-50 bg-[#08b9e3]/95 backdrop-blur supports-[backdrop-filter]:bg-[#08b9e3]/80">
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-6">
-            <Link to="/" className="font-bold text-lg flex items-center gap-1.5">
-              <span>🔥</span>
-              <span className="text-primary">Bitcoin Summer Burn</span>
+            <Link to="/" className="font-heading font-bold text-lg flex items-center gap-2">
+              <img src="/logo-mascot.png" alt="" className="h-8 w-8 rounded-md object-cover" />
+              <span className="text-[#fcea04]">Bitcoin Summer Burn</span>
             </Link>
             <nav className="hidden sm:flex items-center gap-1">
               {navLinks.map(({ to, label }) => (
@@ -65,7 +65,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground bg-[#08b9e3]">
         <div className="container space-y-1">
           <p>Bitcoin Summer Burn 2026 — a Nostr music swap event</p>
           <p>
@@ -73,7 +73,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               href="https://soapbox.pub/mkstack"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2 hover:text-foreground transition-colors"
+              className="underline underline-offset-2 text-[#fcea04] hover:text-foreground transition-colors"
             >
               Vibed with MKStack
             </a>
