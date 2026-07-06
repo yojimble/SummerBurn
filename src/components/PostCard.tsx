@@ -14,14 +14,19 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { isPermittedPoster, CD_LISTING_D_TAG } from '@/lib/summerBurn';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
+import { MediaPlayer } from '@/components/MediaPlayer';
 
 const TOKEN_REGEX = /(https?:\/\/\S+|nostr:[a-zA-Z0-9]+)/g;
 const IMAGE_EXT_REGEX = /\.(png|jpe?g|gif|webp|avif)(\?\S*)?$/i;
+const VIDEO_EXT_REGEX = /\.(mp4|webm|ogg|mov)(\?\S*)?$/i;
 
 function renderContent(content: string) {
   const parts = content.split(TOKEN_REGEX);
 
   return parts.map((part, i) => {
+    if (VIDEO_EXT_REGEX.test(part) && part.startsWith('http')) {
+      return <MediaPlayer key={i} src={part} className="mt-2 rounded-md max-h-96 w-full" />;
+    }
     if (IMAGE_EXT_REGEX.test(part) && part.startsWith('http')) {
       return (
         <img

@@ -4,6 +4,8 @@ import { useAuthor } from '@/hooks/useAuthor';
 import { nip19 } from 'nostr-tools';
 import type { NostrEvent } from '@nostrify/nostrify';
 
+const VIDEO_EXT_REGEX = /\.(mp4|webm|ogg|mov)(\?\S*)?$/i;
+
 function getImageUrl(event: NostrEvent): string | undefined {
   return event.tags.find(([name]) => name === 'url')?.[1];
 }
@@ -21,12 +23,23 @@ export function GalleryCard({ event }: { event: NostrEvent }) {
 
   return (
     <Card className="overflow-hidden group cursor-pointer aspect-square relative">
-      <img
-        src={imageUrl}
-        alt={event.content || 'Bitcoin Summer Burn artwork'}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-        loading="lazy"
-      />
+      {VIDEO_EXT_REGEX.test(imageUrl) ? (
+        <video
+          src={imageUrl}
+          muted
+          loop
+          playsInline
+          autoPlay
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : (
+        <img
+          src={imageUrl}
+          alt={event.content || 'Bitcoin Summer Burn artwork'}
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+      )}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 flex items-center gap-1.5">
         <Avatar className="h-5 w-5 flex-shrink-0 border border-white/40">
           <AvatarImage src={picture} alt={name} />

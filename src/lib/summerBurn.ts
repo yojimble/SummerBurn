@@ -43,6 +43,7 @@ export const KIND_MATCH = 31926;
 // Pubkeys excluded from gallery and stats (e.g. duplicate/test listings).
 export const BLOCKED_PUBKEYS = new Set([
   '0a42407f6821ce9b884e751e955e37bf0329fbb0d6ca8e77d797130baf56891c',
+  '2d14793e6de1ec6209d5af36ff3ef00986e3299e5184cf46eb7fa3f704d804f4', // npub19528j0... (bot)
 ]);
 
 // Organiser's "Summer Burn is live!" post — participants react to this with
