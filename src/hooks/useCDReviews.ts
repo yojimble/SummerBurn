@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { KIND_CD_REVIEW, KIND_CD_LISTING, CD_LISTING_D_TAG } from '@/lib/summerBurn';
+import { dedupeAddressable } from '@/lib/nostrUtils';
 
 export interface CDReview {
   id: string;
@@ -25,7 +26,7 @@ export function useCDReviews(sellerPubkey: string | undefined) {
         [{ kinds: [KIND_CD_REVIEW], '#d': [reviewDTag(sellerPubkey!)] }],
         { signal },
       );
-      const reviews: CDReview[] = events
+      const reviews: CDReview[] = dedupeAddressable(events)
         .map((e) => {
           const scoreStr = e.tags.find(([n, , label]) => n === 'rating' && label === 'thumb')?.[1];
           const score = scoreStr ? parseFloat(scoreStr) : null;

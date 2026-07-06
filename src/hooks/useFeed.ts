@@ -1,6 +1,7 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
 import { HASHTAG, FORUM_TAG, LEGACY_FORUM_THREAD_IDS, KIND_CD_LISTING, CD_LISTING_D_TAG } from '@/lib/summerBurn';
+import { dedupeAddressable } from '@/lib/nostrUtils';
 import { useMuteList } from './useMuteList.ts';
 
 export function useFeed() {
@@ -26,8 +27,8 @@ export function useFeed() {
       );
       return [
         ...rootNotes,
-        ...articles.filter((e) => !muted.has(e.pubkey)),
-        ...listings.filter((e) => !muted.has(e.pubkey)),
+        ...dedupeAddressable(articles.filter((e) => !muted.has(e.pubkey))),
+        ...dedupeAddressable(listings.filter((e) => !muted.has(e.pubkey))),
       ].sort((a, b) => b.created_at - a.created_at);
     },
     staleTime: 30000,
