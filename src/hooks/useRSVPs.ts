@@ -61,7 +61,6 @@ export function useRSVPs() {
         count: accepted.length,
       };
     },
-    staleTime: 60000,
-    refetchInterval: 60000,
+    staleTime: Infinity,
   });
 }

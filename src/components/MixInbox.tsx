@@ -31,8 +31,8 @@ export function MixInbox() {
           if (rumor.kind === 14 && typeof rumor.content === 'string') {
             results.push({ id: wrap.id, content: rumor.content, created_at: rumor.created_at });
           }
-        } catch {
-          // skip undecryptable wraps
+        } catch (err) {
+          console.error('MixInbox: failed to decrypt gift wrap', wrap.id, err);
         }
       }
 
