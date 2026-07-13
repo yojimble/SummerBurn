@@ -64,7 +64,7 @@ export function AnonIdentityCard() {
       created_at: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 172800),
     }, wrapKey);
 
-    await nostr.event(wrap, { signal: AbortSignal.timeout(5000) });
+    await nostr.event(wrap, { signal: AbortSignal.timeout(15000) });
   };
 
   const { sendAdd, sendRemove } = useMixRegistration();
@@ -87,7 +87,8 @@ export function AnonIdentityCard() {
         title: 'Anon identity ready',
         description: "Your browser has saved your key, and we've sent a backup to your Nostr DMs.",
       });
-    } catch {
+    } catch (err) {
+      console.error('AnonIdentityCard: failed to send backup DM on regenerate', err);
       toast({
         title: 'Anon identity created',
         description: 'Saved in your browser. DM backup failed — use the button below to retry.',
@@ -104,7 +105,8 @@ export function AnonIdentityCard() {
       await sendAdd();
       setShowMixConfirm(false);
       toast({ title: "You're in the mix!", description: 'The organiser has your anon npub.' });
-    } catch {
+    } catch (err) {
+      console.error('AnonIdentityCard: failed to send ADD to organiser', err);
       toast({ title: 'Failed', description: 'Could not send to organiser. Try again.' });
     } finally {
       setIsPending(false);
@@ -117,7 +119,8 @@ export function AnonIdentityCard() {
     try {
       await sendBackupDM(anonNsecHex);
       toast({ title: 'Backup sent!', description: 'Check your Nostr DMs — encrypted, only you can read it.' });
-    } catch {
+    } catch (err) {
+      console.error('AnonIdentityCard: failed to send backup DM', err);
       toast({ title: 'Backup failed', description: 'Make sure your signer supports NIP-44.' });
     } finally {
       setIsPending(false);

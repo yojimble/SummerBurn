@@ -29,7 +29,7 @@ export function useMixRegistration() {
     const wrapContent = nip44.v2.encrypt(JSON.stringify(seal), nip44.v2.utils.getConversationKey(wrapKey, ORGANIZER_PUBKEY));
     const wrap = finalizeEvent({ kind: 1059, content: wrapContent, tags: [['p', ORGANIZER_PUBKEY]], created_at: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 172800) }, wrapKey);
 
-    await nostr.event(wrap, { signal: AbortSignal.timeout(5000) });
+    await nostr.event(wrap, { signal: AbortSignal.timeout(15000) });
   };
 
   const sendAdd = () => sendMixDM(`ADD ${anonNpub}`);
