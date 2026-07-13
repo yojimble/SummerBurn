@@ -44,6 +44,7 @@ export function MixInbox() {
 
   const adds = messages?.filter(m => m.content.startsWith('ADD ')) ?? [];
   const removes = messages?.filter(m => m.content.startsWith('REMOVE ')) ?? [];
+  const unrecognized = messages?.filter(m => !m.content.startsWith('ADD ') && !m.content.startsWith('REMOVE ')) ?? [];
 
   return (
     <Card>
@@ -67,6 +68,14 @@ export function MixInbox() {
           <div className="space-y-1">
             <p className="text-xs font-semibold text-red-500">REMOVE ({removes.length})</p>
             {removes.map(m => (
+              <p key={m.id} className="font-mono text-xs break-all bg-muted p-1.5 rounded">{m.content}</p>
+            ))}
+          </div>
+        )}
+        {unrecognized.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-yellow-600">Unrecognized ({unrecognized.length})</p>
+            {unrecognized.map(m => (
               <p key={m.id} className="font-mono text-xs break-all bg-muted p-1.5 rounded">{m.content}</p>
             ))}
           </div>
