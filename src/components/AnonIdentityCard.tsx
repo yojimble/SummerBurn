@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { finalizeEvent, generateSecretKey, nip44, nip19 } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
 import { ChevronDown } from 'lucide-react';
@@ -12,6 +12,10 @@ import { useMixRegistration } from '@/hooks/useMixRegistration';
 import { toast } from '@/hooks/useToast';
 import { hexToBytes, bytesToHex } from '@/lib/utils';
 
+function mixStatusKey(anonPubkey: string) {
+  return `summerburn2026:mix-status:${anonPubkey}`;
+}
+
 export function AnonIdentityCard() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
@@ -21,6 +25,11 @@ export function AnonIdentityCard() {
   const [showMixConfirm, setShowMixConfirm] = useState(false);
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [inMix, setInMix] = useState(false);
+
+  useEffect(() => {
+    setInMix(anonPubkey ? localStorage.getItem(mixStatusKey(anonPubkey)) === 'added' : false);
+  }, [anonPubkey]);
 
   const sendBackupDM = async (nsecHex: string) => {
     if (!user?.signer.nip44) return;
@@ -65,6 +74,16 @@ export function AnonIdentityCard() {
     }, wrapKey);
 
     await nostr.event(wrap, { signal: AbortSignal.timeout(15000) });
+
+    // Relays can reply OK without durably storing the event, so confirm it's
+    // actually retrievable before treating the send as successful.
+    const confirmed = await nostr.query(
+      [{ ids: [wrap.id] }],
+      { signal: AbortSignal.timeout(10000) },
+    );
+    if (!confirmed.some(e => e.id === wrap.id)) {
+      throw new Error('Relay accepted the event but it could not be confirmed on re-query');
+    }
   };
 
   const { sendAdd, sendRemove } = useMixRegistration();
@@ -103,10 +122,29 @@ export function AnonIdentityCard() {
     setIsPending(true);
     try {
       await sendAdd();
+      localStorage.setItem(mixStatusKey(anonPubkey), 'added');
+      setInMix(true);
       setShowMixConfirm(false);
       toast({ title: "You're in the mix!", description: 'The organiser has your anon npub.' });
     } catch (err) {
       console.error('AnonIdentityCard: failed to send ADD to organiser', err);
+      toast({ title: 'Failed', description: 'Could not send to organiser. Try again.' });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  const handleRemoveFromMix = async () => {
+    if (!anonNsecHex || !anonPubkey || !anonNpub) return;
+    if (!confirm('Remove yourself from the matching list?')) return;
+    setIsPending(true);
+    try {
+      await sendRemove();
+      localStorage.removeItem(mixStatusKey(anonPubkey));
+      setInMix(false);
+      toast({ title: 'Removed from the mix', description: 'The organiser has been notified.' });
+    } catch (err) {
+      console.error('AnonIdentityCard: failed to send REMOVE to organiser', err);
       toast({ title: 'Failed', description: 'Could not send to organiser. Try again.' });
     } finally {
       setIsPending(false);
@@ -215,10 +253,19 @@ export function AnonIdentityCard() {
               Your browser has saved this key, and a backup has been sent to your Nostr DMs —
               check there if you ever switch devices.
             </p>
+            {inMix && (
+              <p className="text-xs font-medium text-green-600">✓ You're in the mix — the organiser has this anon npub.</p>
+            )}
             <div className="flex gap-2 flex-wrap">
-              <Button size="sm" onClick={() => setShowMixConfirm(v => !v)} disabled={isPending}>
-                Add me to the mix
-              </Button>
+              {inMix ? (
+                <Button size="sm" variant="destructive" onClick={handleRemoveFromMix} disabled={isPending}>
+                  {isPending ? 'Sending…' : 'Remove me from the mix'}
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => setShowMixConfirm(v => !v)} disabled={isPending}>
+                  Add me to the mix
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={handleBackup} disabled={isPending}>
                 {isPending ? 'Sending…' : 'Re-send backup DM'}
               </Button>
@@ -226,7 +273,7 @@ export function AnonIdentityCard() {
                 Regenerate
               </Button>
             </div>
-            {showMixConfirm && (
+            {showMixConfirm && !inMix && (
               <div className="rounded-md border border-border bg-muted/40 p-3 space-y-3">
                 <p className="text-xs text-muted-foreground">This npub will be sent to the organiser as a gift-wrapped DM:</p>
                 <p className="font-mono text-xs break-all bg-muted p-2 rounded">ADD<br />{anonNpub}</p>

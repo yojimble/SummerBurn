@@ -30,6 +30,16 @@ export function useMixRegistration() {
     const wrap = finalizeEvent({ kind: 1059, content: wrapContent, tags: [['p', ORGANIZER_PUBKEY]], created_at: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 172800) }, wrapKey);
 
     await nostr.event(wrap, { signal: AbortSignal.timeout(15000) });
+
+    // Relays can reply OK without durably storing the event, so confirm it's
+    // actually retrievable before treating the send as successful.
+    const confirmed = await nostr.query(
+      [{ ids: [wrap.id] }],
+      { signal: AbortSignal.timeout(10000) },
+    );
+    if (!confirmed.some(e => e.id === wrap.id)) {
+      throw new Error('Relay accepted the event but it could not be confirmed on re-query');
+    }
   };
 
   const sendAdd = () => sendMixDM(`ADD ${anonNpub}`);
