@@ -25,11 +25,15 @@ export function AnonIdentityCard() {
   const [showMixConfirm, setShowMixConfirm] = useState(false);
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [inMix, setInMix] = useState(false);
+  const [mixStatus, setMixStatus] = useState<'none' | 'added' | 'removed'>('none');
 
   useEffect(() => {
-    setInMix(anonPubkey ? localStorage.getItem(mixStatusKey(anonPubkey)) === 'added' : false);
+    const stored = anonPubkey ? localStorage.getItem(mixStatusKey(anonPubkey)) : null;
+    setMixStatus(stored === 'added' || stored === 'removed' ? stored : 'none');
   }, [anonPubkey]);
+
+  const inMix = mixStatus === 'added';
+  const wasRemoved = mixStatus === 'removed';
 
   const sendBackupDM = async (nsecHex: string) => {
     if (!user?.signer.nip44) return;
@@ -86,7 +90,7 @@ export function AnonIdentityCard() {
     }
   };
 
-  const { sendAdd, sendRemove } = useMixRegistration();
+  const { sendAdd, sendRemove } = useMixRegistration({ anonNsecHex, anonPubkey, anonNpub });
 
   const handleGenerate = async () => {
     if (anonNsecHex) {
@@ -123,7 +127,7 @@ export function AnonIdentityCard() {
     try {
       await sendAdd();
       localStorage.setItem(mixStatusKey(anonPubkey), 'added');
-      setInMix(true);
+      setMixStatus('added');
       setShowMixConfirm(false);
       toast({ title: "You're in the mix!", description: 'The organiser has your anon npub.' });
     } catch (err) {
@@ -140,8 +144,8 @@ export function AnonIdentityCard() {
     setIsPending(true);
     try {
       await sendRemove();
-      localStorage.removeItem(mixStatusKey(anonPubkey));
-      setInMix(false);
+      localStorage.setItem(mixStatusKey(anonPubkey), 'removed');
+      setMixStatus('removed');
       toast({ title: 'Removed from the mix', description: 'The organiser has been notified.' });
     } catch (err) {
       console.error('AnonIdentityCard: failed to send REMOVE to organiser', err);
@@ -256,16 +260,21 @@ export function AnonIdentityCard() {
             {inMix && (
               <p className="text-xs font-medium text-green-600">✓ You're in the mix — the organiser has this anon npub.</p>
             )}
+            {wasRemoved && (
+              <p className="text-xs font-medium text-muted-foreground">
+                You've removed this identity from the mix. Regenerate to get a fresh anon identity and rejoin.
+              </p>
+            )}
             <div className="flex gap-2 flex-wrap">
               {inMix ? (
                 <Button size="sm" variant="destructive" onClick={handleRemoveFromMix} disabled={isPending}>
                   {isPending ? 'Sending…' : 'Remove me from the mix'}
                 </Button>
-              ) : (
+              ) : !wasRemoved ? (
                 <Button size="sm" onClick={() => setShowMixConfirm(v => !v)} disabled={isPending}>
                   Add me to the mix
                 </Button>
-              )}
+              ) : null}
               <Button variant="outline" size="sm" onClick={handleBackup} disabled={isPending}>
                 {isPending ? 'Sending…' : 'Re-send backup DM'}
               </Button>
@@ -273,7 +282,7 @@ export function AnonIdentityCard() {
                 Regenerate
               </Button>
             </div>
-            {showMixConfirm && !inMix && (
+            {showMixConfirm && !inMix && !wasRemoved && (
               <div className="rounded-md border border-border bg-muted/40 p-3 space-y-3">
                 <p className="text-xs text-muted-foreground">This npub will be sent to the organiser as a gift-wrapped DM:</p>
                 <p className="font-mono text-xs break-all bg-muted p-2 rounded">ADD<br />{anonNpub}</p>

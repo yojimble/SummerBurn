@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
+import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { useMixRegistration } from '@/hooks/useMixRegistration';
 import { toast } from '@/hooks/useToast';
 import { RSVP_D_TAG, CALENDAR_EVENT_COORDINATE } from '@/lib/summerBurn';
@@ -29,7 +30,8 @@ export function RSVPButton() {
 
   const isRSVPd = myRSVP?.tags.find(([n]) => n === 'status')?.[1] === 'accepted';
 
-  const { sendRemove, hasAnonIdentity } = useMixRegistration();
+  const { anonNsecHex, anonPubkey, anonNpub } = useAnonIdentity();
+  const { sendRemove, hasAnonIdentity } = useMixRegistration({ anonNsecHex, anonPubkey, anonNpub });
 
   const { mutate: doRSVP, isPending } = useMutation({
     mutationFn: async (status: 'accepted' | 'declined') => {

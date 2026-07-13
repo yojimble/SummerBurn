@@ -1,12 +1,16 @@
 import { finalizeEvent, generateSecretKey, nip44 } from 'nostr-tools';
 import { useNostr } from '@nostrify/react';
-import { useAnonIdentity } from './useAnonIdentity';
 import { ORGANIZER_PUBKEY } from '@/lib/summerBurn';
 import { hexToBytes } from '@/lib/utils';
 
-export function useMixRegistration() {
+interface AnonIdentity {
+  anonNsecHex: string | null;
+  anonPubkey: string | null;
+  anonNpub: string | null;
+}
+
+export function useMixRegistration({ anonNsecHex, anonPubkey, anonNpub }: AnonIdentity) {
   const { nostr } = useNostr();
-  const { anonNsecHex, anonPubkey, anonNpub } = useAnonIdentity();
 
   const sendMixDM = async (content: string) => {
     if (!anonNsecHex || !anonPubkey) throw new Error('No anon identity');
