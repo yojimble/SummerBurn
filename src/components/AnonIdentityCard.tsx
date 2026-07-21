@@ -50,6 +50,7 @@ export function AnonIdentityCard() {
   const [isPending, setIsPending] = useState(false);
   const [mixStatus, setMixStatus] = useState<'none' | 'added' | 'removed'>('none');
   const [verifyingMixStatus, setVerifyingMixStatus] = useState(false);
+  const [staleMixStatus, setStaleMixStatus] = useState<'added' | 'removed' | null>(null);
 
   const { sendAdd, sendRemove, checkStillOnRelay } = useMixRegistration({ anonNsecHex, anonPubkey, anonNpub });
 
@@ -68,6 +69,7 @@ export function AnonIdentityCard() {
       return;
     }
     setMixStatus(stored.status);
+    setStaleMixStatus(null);
 
     if (!stored.eventId) return;
     let cancelled = false;
@@ -77,6 +79,7 @@ export function AnonIdentityCard() {
         if (cancelled || stillThere) return;
         localStorage.removeItem(mixStatusKey(anonPubkey));
         setMixStatus('none');
+        setStaleMixStatus(stored.status);
         toast({
           title: 'Mix status could not be confirmed',
           description: `Your last "${stored.status}" DM is no longer found on the relays — please send it again.`,
@@ -213,6 +216,26 @@ export function AnonIdentityCard() {
     }
   };
 
+  const handleResendStale = async () => {
+    if (!anonNsecHex || !anonPubkey || !anonNpub || !staleMixStatus) return;
+    setIsPending(true);
+    try {
+      const eventId = staleMixStatus === 'added' ? await sendAdd() : await sendRemove();
+      writeMixStatus(anonPubkey, { status: staleMixStatus, eventId });
+      setMixStatus(staleMixStatus);
+      setStaleMixStatus(null);
+      toast({
+        title: staleMixStatus === 'added' ? "You're in the mix!" : 'Removed from the mix',
+        description: 'The organiser has been notified.',
+      });
+    } catch (err) {
+      console.error('AnonIdentityCard: failed to resend stale mix status', err);
+      toast({ title: 'Failed', description: 'Could not send to organiser. Try again.' });
+    } finally {
+      setIsPending(false);
+    }
+  };
+
   const handleBackup = async () => {
     if (!user || !anonNsecHex) return;
     setIsPending(true);
@@ -325,6 +348,16 @@ export function AnonIdentityCard() {
               <p className="text-xs font-medium text-muted-foreground">
                 You've removed this identity from the mix. Regenerate to get a fresh anon identity and rejoin.
               </p>
+            )}
+            {staleMixStatus && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 space-y-2">
+                <p className="text-xs font-medium text-destructive">
+                  Your last "{staleMixStatus}" DM could no longer be confirmed on the relays — the organiser may not have it.
+                </p>
+                <Button size="sm" variant="destructive" onClick={handleResendStale} disabled={isPending}>
+                  {isPending ? 'Sending…' : `Resend ${staleMixStatus === 'added' ? 'ADD' : 'REMOVE'}`}
+                </Button>
+              </div>
             )}
             <div className="flex gap-2 flex-wrap">
               {inMix ? (
