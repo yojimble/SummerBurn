@@ -15,6 +15,7 @@ import { PublishCDCard } from '@/components/PublishCDCard';
 import { RSVPButton } from '@/components/RSVPButton';
 import { OrganizerTools } from '@/components/OrganizerTools';
 import { MixInbox } from '@/components/MixInbox';
+import { OrganizerDMInbox } from '@/components/OrganizerDMInbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -139,6 +140,7 @@ const Account = () => {
           <>
             <OrganizerTools />
             <MixInbox />
+            <OrganizerDMInbox />
           </>
         ) : (<>
 

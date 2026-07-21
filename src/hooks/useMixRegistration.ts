@@ -12,7 +12,7 @@ interface AnonIdentity {
 export function useMixRegistration({ anonNsecHex, anonPubkey, anonNpub }: AnonIdentity) {
   const { nostr } = useNostr();
 
-  const sendMixDM = async (content: string) => {
+  const sendMixDM = async (content: string): Promise<string> => {
     if (!anonNsecHex || !anonPubkey) throw new Error('No anon identity');
     const privkey = hexToBytes(anonNsecHex);
 
@@ -44,10 +44,23 @@ export function useMixRegistration({ anonNsecHex, anonPubkey, anonNpub }: AnonId
     if (!confirmed.some(e => e.id === wrap.id)) {
       throw new Error('Relay accepted the event but it could not be confirmed on re-query');
     }
+
+    return wrap.id;
+  };
+
+  // Re-check that a previously sent ADD/REMOVE gift wrap is still retrievable
+  // from the relays, so a locally remembered "you're in the mix" status can't
+  // silently go stale if the relay that held it drops the event later.
+  const checkStillOnRelay = async (eventId: string) => {
+    const found = await nostr.query(
+      [{ ids: [eventId] }],
+      { signal: AbortSignal.timeout(10000) },
+    );
+    return found.some(e => e.id === eventId);
   };
 
   const sendAdd = () => sendMixDM(`ADD ${anonNpub}`);
   const sendRemove = () => sendMixDM(`REMOVE ${anonNpub}`);
 
-  return { sendAdd, sendRemove, hasAnonIdentity: !!anonNsecHex };
+  return { sendAdd, sendRemove, checkStillOnRelay, hasAnonIdentity: !!anonNsecHex };
 }

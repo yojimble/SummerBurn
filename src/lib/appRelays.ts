@@ -14,3 +14,17 @@ export const APP_RELAYS: RelayMetadata = {
   ],
   updatedAt: 0,
 };
+
+// Merge a set of relays with the app's current defaults (by URL) instead of
+// replacing them, so publishes/queries always reach the site's relays in
+// addition to whatever else is in the list — even if the list being merged
+// into was cached before APP_RELAYS last changed.
+export function mergeWithAppRelays(relays: RelayMetadata['relays']): RelayMetadata['relays'] {
+  const byUrl = new Map(relays.map((r) => [r.url, r]));
+  for (const appRelay of APP_RELAYS.relays) {
+    if (!byUrl.has(appRelay.url)) {
+      byUrl.set(appRelay.url, appRelay);
+    }
+  }
+  return [...byUrl.values()];
+}

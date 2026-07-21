@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from 'react';
 import { z } from 'zod';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata, type BlossomServerMetadata } from '@/contexts/AppContext';
+import { mergeWithAppRelays } from '@/lib/appRelays';
 
 interface AppProviderProps {
   children: ReactNode;
@@ -60,7 +61,18 @@ export function AppProvider(props: AppProviderProps) {
     setConfig(updater);
   };
 
+  // A cached relayMetadata (e.g. synced from a user's NIP-65 list before
+  // APP_RELAYS last changed) would otherwise silently shadow the app's
+  // current default relays forever, until that user's own relay list happens
+  // to be re-synced. Re-fold the current APP_RELAYS in on every load so a
+  // code-level relay change takes effect immediately for everyone.
   const config = { ...defaultConfig, ...rawConfig };
+  if (rawConfig.relayMetadata) {
+    config.relayMetadata = {
+      ...rawConfig.relayMetadata,
+      relays: mergeWithAppRelays(rawConfig.relayMetadata.relays),
+    };
+  }
 
   const appContextValue: AppContextType = {
     config,

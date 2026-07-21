@@ -12,8 +12,31 @@ import { useMixRegistration } from '@/hooks/useMixRegistration';
 import { toast } from '@/hooks/useToast';
 import { hexToBytes, bytesToHex } from '@/lib/utils';
 
+interface StoredMixStatus {
+  status: 'added' | 'removed';
+  /** id of the gift-wrap event that produced this status, so it can be re-verified against the relays. */
+  eventId?: string;
+}
+
 function mixStatusKey(anonPubkey: string) {
   return `summerburn2026:mix-status:${anonPubkey}`;
+}
+
+function readMixStatus(anonPubkey: string): StoredMixStatus | null {
+  const raw = localStorage.getItem(mixStatusKey(anonPubkey));
+  if (!raw) return null;
+  if (raw === 'added' || raw === 'removed') return { status: raw };
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed?.status === 'added' || parsed?.status === 'removed') return parsed;
+  } catch {
+    // ignore malformed value
+  }
+  return null;
+}
+
+function writeMixStatus(anonPubkey: string, value: StoredMixStatus) {
+  localStorage.setItem(mixStatusKey(anonPubkey), JSON.stringify(value));
 }
 
 export function AnonIdentityCard() {
@@ -26,10 +49,47 @@ export function AnonIdentityCard() {
   const [open, setOpen] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [mixStatus, setMixStatus] = useState<'none' | 'added' | 'removed'>('none');
+  const [verifyingMixStatus, setVerifyingMixStatus] = useState(false);
 
+  const { sendAdd, sendRemove, checkStillOnRelay } = useMixRegistration({ anonNsecHex, anonPubkey, anonNpub });
+
+  // Don't just trust the locally remembered status forever — re-check that
+  // the DM that produced it is still actually retrievable from the relays,
+  // so a relay dropping the event later doesn't leave someone believing
+  // they're in the mix when the organiser's side can no longer see it.
   useEffect(() => {
-    const stored = anonPubkey ? localStorage.getItem(mixStatusKey(anonPubkey)) : null;
-    setMixStatus(stored === 'added' || stored === 'removed' ? stored : 'none');
+    if (!anonPubkey) {
+      setMixStatus('none');
+      return;
+    }
+    const stored = readMixStatus(anonPubkey);
+    if (!stored) {
+      setMixStatus('none');
+      return;
+    }
+    setMixStatus(stored.status);
+
+    if (!stored.eventId) return;
+    let cancelled = false;
+    setVerifyingMixStatus(true);
+    checkStillOnRelay(stored.eventId)
+      .then((stillThere) => {
+        if (cancelled || stillThere) return;
+        localStorage.removeItem(mixStatusKey(anonPubkey));
+        setMixStatus('none');
+        toast({
+          title: 'Mix status could not be confirmed',
+          description: `Your last "${stored.status}" DM is no longer found on the relays — please send it again.`,
+        });
+      })
+      .catch((err) => {
+        console.error('AnonIdentityCard: failed to re-verify mix status', err);
+      })
+      .finally(() => {
+        if (!cancelled) setVerifyingMixStatus(false);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anonPubkey]);
 
   const inMix = mixStatus === 'added';
@@ -90,8 +150,6 @@ export function AnonIdentityCard() {
     }
   };
 
-  const { sendAdd, sendRemove } = useMixRegistration({ anonNsecHex, anonPubkey, anonNpub });
-
   const handleGenerate = async () => {
     if (anonNsecHex) {
       if (!confirm('This will replace your current anon identity. Continue?')) return;
@@ -125,8 +183,8 @@ export function AnonIdentityCard() {
     if (!anonNsecHex || !anonPubkey || !anonNpub) return;
     setIsPending(true);
     try {
-      await sendAdd();
-      localStorage.setItem(mixStatusKey(anonPubkey), 'added');
+      const eventId = await sendAdd();
+      writeMixStatus(anonPubkey, { status: 'added', eventId });
       setMixStatus('added');
       setShowMixConfirm(false);
       toast({ title: "You're in the mix!", description: 'The organiser has your anon npub.' });
@@ -143,8 +201,8 @@ export function AnonIdentityCard() {
     if (!confirm('Remove yourself from the matching list?')) return;
     setIsPending(true);
     try {
-      await sendRemove();
-      localStorage.setItem(mixStatusKey(anonPubkey), 'removed');
+      const eventId = await sendRemove();
+      writeMixStatus(anonPubkey, { status: 'removed', eventId });
       setMixStatus('removed');
       toast({ title: 'Removed from the mix', description: 'The organiser has been notified.' });
     } catch (err) {
@@ -258,7 +316,10 @@ export function AnonIdentityCard() {
               check there if you ever switch devices.
             </p>
             {inMix && (
-              <p className="text-xs font-medium text-green-600">✓ You're in the mix — the organiser has this anon npub.</p>
+              <p className="text-xs font-medium text-green-600">
+                ✓ You're in the mix — the organiser has this anon npub.
+                {verifyingMixStatus && <span className="text-muted-foreground font-normal"> (re-checking relays…)</span>}
+              </p>
             )}
             {wasRemoved && (
               <p className="text-xs font-medium text-muted-foreground">

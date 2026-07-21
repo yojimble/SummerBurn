@@ -3,21 +3,7 @@ import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAppContext } from '@/hooks/useAppContext';
 import { parseBlossomServerList } from '@/lib/appBlossom';
-import { APP_RELAYS } from '@/lib/appRelays';
-import type { RelayMetadata } from '@/contexts/AppContext';
-
-// Merge a user's own NIP-65 relays with the app's default relays (by URL)
-// instead of replacing them, so publishes/queries always reach the site's
-// relays in addition to the user's own.
-function mergeRelays(fetched: RelayMetadata['relays']): RelayMetadata['relays'] {
-  const byUrl = new Map(fetched.map((r) => [r.url, r]));
-  for (const appRelay of APP_RELAYS.relays) {
-    if (!byUrl.has(appRelay.url)) {
-      byUrl.set(appRelay.url, appRelay);
-    }
-  }
-  return [...byUrl.values()];
-}
+import { mergeWithAppRelays } from '@/lib/appRelays';
 
 /**
  * NostrSync - Syncs user's Nostr data
@@ -56,7 +42,7 @@ export function NostrSync() {
               }));
 
             if (fetchedRelays.length > 0) {
-              const relays = mergeRelays(fetchedRelays);
+              const relays = mergeWithAppRelays(fetchedRelays);
               console.log('Syncing relay list from Nostr (merged with app defaults):', relays);
               updateConfig((current) => ({
                 ...current,
