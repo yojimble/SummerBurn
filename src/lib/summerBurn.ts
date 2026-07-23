@@ -35,11 +35,6 @@ export function isPermittedPoster(pubkey: string | undefined, rsvpedPubkeys: Set
 }
 
 // Custom event kinds
-// kind 31926: organiser publishes one per sender, NIP-44 encrypted to sender's pubkey.
-//   content: JSON { recipients: [anonPubkey1, anonPubkey2, anonPubkey3] }
-//   d-tag:   "summerburn2026:{senderPubkey}"
-export const KIND_MATCH = 31926;
-
 // Pubkeys excluded from gallery and stats (e.g. duplicate/test listings).
 export const BLOCKED_PUBKEYS = new Set([
   '0a42407f6821ce9b884e751e955e37bf0329fbb0d6ca8e77d797130baf56891c',

@@ -2,11 +2,12 @@
 /**
  * Summer Burn 2026 — Organiser Matching Tool
  *
- * 1. Reads all RSVPs (kind 31925, status=accepted)
- * 2. Decrypts NIP-44 DMs sent to the organiser to collect each participant's anon pubkey
- * 3. Generates a non-symmetric circular matching — your 3 recipients ≠ your 3 senders
- * 4. Shows a preview — dry run by default
- * 5. Publishes kind 31926 match events when run with --publish
+ * 1. Reads gift-wrapped (NIP-59) ADD/REMOVE mix messages sent to the organiser
+ *    to resolve which anon npubs are currently active in the mix
+ * 2. Generates a non-symmetric circular matching — your 3 recipients ≠ your 3 senders
+ * 3. Shows a preview — dry run by default
+ * 4. Publishes the matching as gift-wrapped (NIP-17/NIP-59) DMs, one per active
+ *    anon npub, addressed to that anon npub — no custom event kind involved
  *
  * Usage:
  *   export ORGANIZER_NSEC=nsec1...
@@ -17,16 +18,14 @@
  *   npm install  (nostr-tools is already in package.json)
  */
 
-import * as nip44 from 'nostr-tools/nip44';
 import * as nip19 from 'nostr-tools/nip19';
 import { getPublicKey } from 'nostr-tools/pure';
-import { finalizeEvent } from 'nostr-tools/pure';
+import { unwrapEvent, wrapEvent } from 'nostr-tools/nip59';
 import { SimplePool } from 'nostr-tools/pool';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const ORGANIZER_PUBKEY = '6a400414dbd303a27592a2d68a724ea690e6fa0c365358e32cd1a56c93a5abb5';
-const KIND_MATCH = 31926;
 
 const RELAYS = [
   'wss://relay.damus.io',
@@ -71,95 +70,67 @@ async function main() {
 
   const pool = new SimplePool();
 
-  // --- Fetch RSVPs ---
-  console.log('\nFetching RSVPs...');
-  const rsvpEvents = await pool.querySync(RELAYS, {
-    kinds: [31925],
-    '#d': ['summerburn2026'],
-    limit: 1000,
-  });
-
-  // Latest event per pubkey
-  const rsvpMap = new Map();
-  for (const ev of rsvpEvents) {
-    const existing = rsvpMap.get(ev.pubkey);
-    if (!existing || ev.created_at > existing.created_at) {
-      rsvpMap.set(ev.pubkey, ev);
-    }
-  }
-
-  const acceptedPubkeys = new Set();
-  for (const [pubkey, ev] of rsvpMap) {
-    const statusTag = ev.tags.find(t => t[0] === 'status');
-    if (statusTag?.[1] === 'accepted') acceptedPubkeys.add(pubkey);
-  }
-
-  console.log(`  ${rsvpMap.size} total RSVPs, ${acceptedPubkeys.size} accepted`);
-
-  // --- Fetch anon key registrations ---
-  // Participants sent a NIP-44 encrypted kind 4 DM to the organiser on registration.
-  // Content: JSON { anonPubkey: "..." }
-  console.log('\nFetching anon key registrations...');
-  const dmEvents = await pool.querySync(RELAYS, {
-    kinds: [4],
+  // --- Fetch mix ADD/REMOVE gift wraps ---
+  // Participants join the mix by sending themselves a gift-wrapped (kind 1059)
+  // DM to the organiser, signed with their anon key, containing "ADD npub1..."
+  // or "REMOVE npub1...". The real identity behind the anon key is never
+  // exposed to the organiser — eligibility is purely mix membership.
+  console.log('\nFetching mix gift wraps...');
+  const wraps = await pool.querySync(RELAYS, {
+    kinds: [1059],
     '#p': [ORGANIZER_PUBKEY],
     limit: 5000,
   });
 
-  // Latest DM per sender
-  const dmMap = new Map();
-  for (const ev of dmEvents) {
-    const existing = dmMap.get(ev.pubkey);
-    if (!existing || ev.created_at > existing.created_at) {
-      dmMap.set(ev.pubkey, ev);
-    }
-  }
+  console.log(`  ${wraps.length} gift wraps found, decrypting...`);
 
-  // Decrypt and extract anon pubkeys (NIP-44 encrypted)
-  const anonMap = new Map(); // real pubkey → anon pubkey
-  for (const [senderPubkey, ev] of dmMap) {
+  // A REMOVE for an anon npub is permanent — the site's re-add lockout means
+  // there's no legitimate way to see an ADD after a REMOVE for the same npub
+  // (matches MixInbox.tsx's "any REMOVE wins" behavior). Full history is kept
+  // (not just the outcome) so a dry run can show each npub's real ADD/REMOVE
+  // timeline for manual sanity-checking before a live publish.
+  const historyByAnonPubkey = new Map(); // anonPubkey hex → [{ action, created_at }, ...]
+  for (const wrap of wraps) {
     try {
-      const convKey = nip44.getConversationKey(privkeyBytes, senderPubkey);
-      const plaintext = nip44.decrypt(ev.content, convKey);
-      const data = JSON.parse(plaintext);
-      if (typeof data?.anonPubkey === 'string') {
-        anonMap.set(senderPubkey, data.anonPubkey);
-      }
+      const rumor = unwrapEvent(wrap, privkeyBytes);
+      if (rumor.kind !== 14) continue;
+      const match = rumor.content.trim().match(/^(ADD|REMOVE)\s+(npub1\S+)/);
+      if (!match) continue;
+      const [, action, npub] = match;
+      const { type, data } = nip19.decode(npub);
+      if (type !== 'npub') continue;
+
+      const history = historyByAnonPubkey.get(data) ?? [];
+      history.push({ action, created_at: rumor.created_at });
+      historyByAnonPubkey.set(data, history);
     } catch {
-      // Not a registration DM or wrong encryption — skip
+      // Not addressed to us, or malformed — skip
     }
   }
 
-  console.log(`  ${anonMap.size} anon keys registered`);
-
-  // --- Cross-reference ---
-  const eligible = [];
-  for (const pubkey of acceptedPubkeys) {
-    if (anonMap.has(pubkey)) {
-      eligible.push({ realPubkey: pubkey, anonPubkey: anonMap.get(pubkey) });
-    }
+  for (const history of historyByAnonPubkey.values()) {
+    history.sort((a, b) => a.created_at - b.created_at);
   }
 
-  const rsvpedWithoutAnon = [...acceptedPubkeys].filter(pk => !anonMap.has(pk));
-  const anonWithoutRsvp = [...anonMap.keys()].filter(pk => !acceptedPubkeys.has(pk));
+  const active = [...historyByAnonPubkey.entries()]
+    .filter(([, history]) => !history.some(h => h.action === 'REMOVE'))
+    .map(([anonPubkey]) => anonPubkey);
 
-  console.log('\n=== Eligible participants (RSVPed + anon key registered) ===');
-  eligible.forEach((p, i) => {
-    const npub = nip19.npubEncode(p.realPubkey);
-    const anonNpub = nip19.npubEncode(p.anonPubkey);
-    console.log(`  ${String(i + 1).padStart(2)}. ${npub.slice(0, 24)}…  →  anon: ${anonNpub.slice(0, 20)}…`);
+  console.log(`\n=== Active in mix (${active.length}) ===`);
+  active.forEach((pk, i) => {
+    const history = historyByAnonPubkey.get(pk);
+    const joinedAt = new Date(history[0].created_at * 1000).toISOString();
+    console.log(`  ${String(i + 1).padStart(2)}. ${nip19.npubEncode(pk)}  —  joined: ${joinedAt}`);
   });
 
-  if (rsvpedWithoutAnon.length > 0) {
-    console.log(`\n⚠  RSVPed but haven't generated an anon key yet (${rsvpedWithoutAnon.length}):`);
-    rsvpedWithoutAnon.forEach(pk => console.log(`    ${nip19.npubEncode(pk).slice(0, 28)}…`));
-  }
-  if (anonWithoutRsvp.length > 0) {
-    console.log(`\n⚠  Registered anon key but not RSVPed — excluded (${anonWithoutRsvp.length})`);
+  const excludedForRemove = [...historyByAnonPubkey.entries()]
+    .filter(([, history]) => history.some(h => h.action === 'REMOVE'));
+  if (excludedForRemove.length > 0) {
+    console.log(`\n(${excludedForRemove.length} npub(s) excluded — have a REMOVE in their history)`);
   }
 
-  if (eligible.length < 2) {
-    console.error(`\nNeed at least 2 eligible participants. Have ${eligible.length}.`);
+  if (active.length < 2) {
+    console.error(`\nNeed at least 2 people in the mix. Have ${active.length}.`);
     pool.close(RELAYS);
     return;
   }
@@ -168,25 +139,25 @@ async function main() {
   // Circular non-symmetric assignment: shuffle all participants into a ring.
   // Person[i] sends to [i+1, i+2, i+3] and receives from [i-1, i-2, i-3].
   // This guarantees your senders and recipients never overlap (requires N ≥ 7).
-  const shuffled = [...eligible].sort(() => Math.random() - 0.5);
+  const shuffled = [...active].sort(() => Math.random() - 0.5);
   const N = shuffled.length;
 
   if (N < 7) {
-    console.error(`\nNeed at least 7 eligible participants for non-symmetric matching. Have ${N}.`);
+    console.error(`\nNeed at least 7 people in the mix for non-symmetric matching. Have ${N}.`);
     pool.close(RELAYS);
     return;
   }
 
-  const matches = shuffled.map((participant, i) => {
-    const sendingTo = [1, 2, 3].map(offset => shuffled[(i + offset) % N].anonPubkey);
-    const receivingFrom = [1, 2, 3].map(offset => shuffled[(i - offset + N) % N].anonPubkey);
-    return { ...participant, sendingTo, receivingFrom };
+  const matches = shuffled.map((anonPubkey, i) => {
+    const sendingTo = [1, 2, 3].map(offset => shuffled[(i + offset) % N]);
+    const receivingFrom = [1, 2, 3].map(offset => shuffled[(i - offset + N) % N]);
+    return { anonPubkey, sendingTo, receivingFrom };
   });
 
   console.log(`\n=== Proposed matching (${N} participants, circular ring) ===`);
   console.log('  Each person sends to 3 different people than they receive from.\n');
   for (const [idx, m] of matches.entries()) {
-    const npub = nip19.npubEncode(m.realPubkey).slice(0, 28) + '…';
+    const npub = nip19.npubEncode(m.anonPubkey).slice(0, 24) + '…';
     console.log(`  ${String(idx + 1).padStart(2)}. ${npub}  →  sends to [${(idx+1)%N+1}, ${(idx+2)%N+1}, ${(idx+3)%N+1}]`);
   }
 
@@ -199,9 +170,8 @@ async function main() {
     return;
   }
 
-  // --- Publish kind 31926 match events ---
-  console.log('\nPublishing match events...');
-  const now = Math.floor(Date.now() / 1000);
+  // --- Publish matches as gift-wrapped DMs, addressed to each anon npub ---
+  console.log('\nPublishing match DMs...');
 
   let successCount = 0;
   for (const match of matches) {
@@ -210,19 +180,15 @@ async function main() {
       receivingFrom: match.receivingFrom,
     });
 
-    const convKey = nip44.getConversationKey(privkeyBytes, match.realPubkey);
-    const encrypted = nip44.encrypt(payload, convKey);
+    const wrap = wrapEvent(
+      { kind: 14, content: payload, tags: [['p', match.anonPubkey]], created_at: Math.floor(Date.now() / 1000) },
+      privkeyBytes,
+      match.anonPubkey,
+    );
 
-    const event = finalizeEvent({
-      kind: KIND_MATCH,
-      created_at: now,
-      tags: [['d', `summerburn2026:${match.realPubkey}`]],
-      content: encrypted,
-    }, privkeyBytes);
-
-    const npubShort = nip19.npubEncode(match.realPubkey).slice(0, 20) + '…';
+    const npubShort = nip19.npubEncode(match.anonPubkey).slice(0, 24) + '…';
     try {
-      await Promise.any(pool.publish(RELAYS, event));
+      await Promise.any(pool.publish(RELAYS, wrap));
       console.log(`  ✓ ${npubShort}`);
       successCount++;
     } catch (e) {
@@ -230,7 +196,7 @@ async function main() {
     }
   }
 
-  console.log(`\nDone — ${successCount}/${matches.length} match events published.`);
+  console.log(`\nDone — ${successCount}/${matches.length} match DMs published.`);
   pool.close(RELAYS);
 }
 

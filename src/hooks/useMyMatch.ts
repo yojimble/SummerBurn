@@ -1,40 +1,56 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery } from '@tanstack/react-query';
-import { KIND_MATCH, ORGANIZER_PUBKEY, RSVP_D_TAG } from '@/lib/summerBurn';
-import { useCurrentUser } from './useCurrentUser';
+import { unwrapEvent } from 'nostr-tools/nip59';
+import { hexToBytes } from '@/lib/utils';
+import { ORGANIZER_PUBKEY } from '@/lib/summerBurn';
+import { useAnonIdentity } from './useAnonIdentity';
 
 export interface MatchData {
   sendingTo: string[];    // anon pubkeys — recipients who will DM their address to you
-  receivingFrom: string[]; // real pubkeys of senders who will post you a CD
+  receivingFrom: string[]; // anon pubkeys of senders who will post you a CD
 }
 
+// Matches are delivered as gift-wrapped (NIP-17/NIP-59) DMs addressed to the
+// user's current anon pubkey — not a custom event kind. Regenerating the anon
+// identity naturally drops old matches, since they were addressed to the old
+// anon pubkey and won't be found under the new one.
 export function useMyMatch() {
   const { nostr } = useNostr();
-  const { user } = useCurrentUser();
+  const { anonPubkey, anonNsecHex } = useAnonIdentity();
 
   return useQuery({
-    queryKey: ['summerburn', 'match', user?.pubkey ?? ''],
+    queryKey: ['summerburn', 'match', anonPubkey ?? ''],
     queryFn: async (c) => {
-      if (!user || !ORGANIZER_PUBKEY) return null;
-      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(5000)]);
+      if (!anonPubkey || !anonNsecHex || !ORGANIZER_PUBKEY) return null;
+      const signal = AbortSignal.any([c.signal, AbortSignal.timeout(8000)]);
 
-      const [event] = await nostr.query(
-        [{
-          kinds: [KIND_MATCH],
-          authors: [ORGANIZER_PUBKEY],
-          '#d': [`${RSVP_D_TAG}:${user.pubkey}`],
-          limit: 1,
-        }],
+      const wraps = await nostr.query(
+        [{ kinds: [1059], '#p': [anonPubkey], limit: 50 }],
         { signal },
       );
 
-      if (!event) return null;
-      if (!user.signer.nip44) return null;
+      const privkeyBytes = hexToBytes(anonNsecHex);
+      let latest: MatchData | null = null;
+      let latestCreatedAt = -1;
 
-      const decrypted = await user.signer.nip44.decrypt(ORGANIZER_PUBKEY, event.content);
-      return JSON.parse(decrypted) as MatchData;
+      for (const wrap of wraps) {
+        try {
+          const rumor = unwrapEvent(wrap, privkeyBytes);
+          if (rumor.kind !== 14) continue;
+          if (rumor.pubkey !== ORGANIZER_PUBKEY) continue;
+          if (rumor.created_at <= latestCreatedAt) continue;
+          const data = JSON.parse(rumor.content) as MatchData;
+          if (!Array.isArray(data.sendingTo) || !Array.isArray(data.receivingFrom)) continue;
+          latest = data;
+          latestCreatedAt = rumor.created_at;
+        } catch {
+          // Not for us or malformed — skip
+        }
+      }
+
+      return latest;
     },
-    enabled: !!user && !!ORGANIZER_PUBKEY,
+    enabled: !!anonPubkey && !!anonNsecHex && !!ORGANIZER_PUBKEY,
     staleTime: 5 * 60 * 1000,
   });
 }
