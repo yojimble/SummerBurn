@@ -72,7 +72,7 @@ export function SendAddressDialog({ senderAnonPubkey, anonNsecHex, label, onSent
           They'll know where to post your CD — nothing else.
         </p>
         <Textarea
-          placeholder={'Your Name\n123 Street\nCity\nPostcode\nCountry'}
+          placeholder={'123 Street\nCity\nPostcode\nCountry'}
           value={address}
           onChange={(e) => setAddress(e.target.value)}
           rows={5}

@@ -173,7 +173,7 @@ const Account = () => {
                 ) : (
                   <div className="space-y-2">
                     <Textarea
-                      placeholder={'Your Name\n123 Street\nCity\nPostcode\nCountry'}
+                      placeholder={'123 Street\nCity\nPostcode\nCountry'}
                       value={myAddress}
                       onChange={e => setMyAddress(e.target.value)}
                       rows={5}

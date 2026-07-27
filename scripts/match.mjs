@@ -12,7 +12,12 @@
  * Usage:
  *   export ORGANIZER_NSEC=nsec1...
  *   node scripts/match.mjs             # dry run — shows the proposed matching
- *   node scripts/match.mjs --publish   # publishes events to relays
+ *   node scripts/match.mjs --publish   # publishes the same matching shown by the last dry run
+ *
+ * The dry run's matching is cached to disk (scripts/.match-preview.json) so that
+ * --publish sends exactly what you previewed rather than re-shuffling. If the set
+ * of active npubs has changed since the preview, the cache is discarded and a
+ * fresh matching is generated (which you should preview again before publishing).
  *
  * Prerequisites:
  *   npm install  (nostr-tools is already in package.json)
@@ -22,10 +27,15 @@ import * as nip19 from 'nostr-tools/nip19';
 import { getPublicKey } from 'nostr-tools/pure';
 import { unwrapEvent, wrapEvent } from 'nostr-tools/nip59';
 import { SimplePool } from 'nostr-tools/pool';
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const ORGANIZER_PUBKEY = '6a400414dbd303a27592a2d68a724ea690e6fa0c365358e32cd1a56c93a5abb5';
+
+const CACHE_PATH = join(dirname(fileURLToPath(import.meta.url)), '.match-preview.json');
 
 const RELAYS = [
   'wss://relay.damus.io',
@@ -135,17 +145,45 @@ async function main() {
     return;
   }
 
-  // --- Generate matching ---
+  // --- Generate (or reuse) matching ---
   // Circular non-symmetric assignment: shuffle all participants into a ring.
   // Person[i] sends to [i+1, i+2, i+3] and receives from [i-1, i-2, i-3].
   // This guarantees your senders and recipients never overlap (requires N ≥ 7).
-  const shuffled = [...active].sort(() => Math.random() - 0.5);
+  const activeSorted = [...active].sort();
+  let shuffled;
+  let reusedPreview = false;
+
+  if (PUBLISH && existsSync(CACHE_PATH)) {
+    try {
+      const cache = JSON.parse(readFileSync(CACHE_PATH, 'utf8'));
+      const cacheActiveSorted = [...cache.active].sort();
+      if (JSON.stringify(cacheActiveSorted) === JSON.stringify(activeSorted)) {
+        shuffled = cache.shuffled;
+        reusedPreview = true;
+      } else {
+        console.log('\n⚠ Active mix membership changed since the last dry run — discarding');
+        console.log('  the cached preview and generating a fresh (unpreviewed) matching.');
+      }
+    } catch {
+      console.log('\n⚠ Could not read cached preview — generating a fresh matching.');
+    }
+  }
+
+  if (!shuffled) {
+    shuffled = [...active].sort(() => Math.random() - 0.5);
+  }
   const N = shuffled.length;
 
-  if (N < 7) {
-    console.error(`\nNeed at least 7 people in the mix for non-symmetric matching. Have ${N}.`);
+  if (N < 6) {
+    console.error(`\nNeed at least 6 people in the mix for 3-way ring matching. Have ${N}.`);
     pool.close(RELAYS);
     return;
+  }
+
+  if (N === 6) {
+    console.log('\n⚠ Exactly 6 in the mix: offset 3 wraps onto the same person from both');
+    console.log('  directions, so each person will both send to AND receive from one');
+    console.log('  shared partner. The other 2 sends/receives stay fully non-overlapping.');
   }
 
   const matches = shuffled.map((anonPubkey, i) => {
@@ -154,7 +192,7 @@ async function main() {
     return { anonPubkey, sendingTo, receivingFrom };
   });
 
-  console.log(`\n=== Proposed matching (${N} participants, circular ring) ===`);
+  console.log(`\n=== Proposed matching (${N} participants, circular ring)${reusedPreview ? ' — from previewed dry run' : ''} ===`);
   console.log('  Each person sends to 3 different people than they receive from.\n');
   for (const [idx, m] of matches.entries()) {
     const npub = nip19.npubEncode(m.anonPubkey).slice(0, 24) + '…';
@@ -162,12 +200,18 @@ async function main() {
   }
 
   if (!PUBLISH) {
+    writeFileSync(CACHE_PATH, JSON.stringify({ active, shuffled }), 'utf8');
     console.log('\n──────────────────────────────────────────────────────────');
     console.log('DRY RUN — no events published.');
-    console.log('Run with --publish to send match events to participants.');
+    console.log('Run with --publish to send this exact matching to participants.');
     console.log('──────────────────────────────────────────────────────────');
     pool.close(RELAYS);
     return;
+  }
+
+  if (!reusedPreview) {
+    console.log('\n⚠ No matching dry-run preview found for this matching — it was just');
+    console.log('  generated fresh and has not been shown to you before now.');
   }
 
   // --- Publish matches as gift-wrapped DMs, addressed to each anon npub ---
@@ -197,6 +241,7 @@ async function main() {
   }
 
   console.log(`\nDone — ${successCount}/${matches.length} match DMs published.`);
+  if (existsSync(CACHE_PATH)) unlinkSync(CACHE_PATH);
   pool.close(RELAYS);
 }
 

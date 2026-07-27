@@ -29,6 +29,9 @@ yarn.lock
 # Vercel
 .vercel
 
+# Matching script scratch state
+scripts/.match-preview.json
+
 # Secrets
 .env
 .env.*
