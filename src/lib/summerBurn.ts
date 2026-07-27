@@ -52,12 +52,6 @@ export const REACTION_CD_POSTED = '📬';
 //   content: cost string e.g. "£2.50"
 export const KIND_POSTAGE_COST = 31928;
 
-// kind 31929: sender publishes postage receipt image URL for a specific recipient.
-//   signed by sender's anon keypair
-//   d-tag: recipientAnonPubkey
-//   content: Blossom image URL
-export const KIND_POSTAGE_RECEIPT = 31929;
-
 // Kind 31555: GammaMarkets product review (NIP-99 extension).
 //   d-tag: "a:30402:<seller-pubkey>:<CD_LISTING_D_TAG>"
 //   rating tag: ["rating", "<0.00-1.00>", "thumb"] — 0=1★, 0.25=2★, 0.5=3★, 0.75=4★, 1=5★

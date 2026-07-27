@@ -10,7 +10,6 @@ import { Layout } from '@/components/Layout';
 import { AnonIdentityCard } from '@/components/AnonIdentityCard';
 import { CDPostedButton } from '@/components/CDPostedButton';
 import { AnonZapButton } from '@/components/AnonZapButton';
-import { PostageReceiptUpload } from '@/components/PostageReceiptUpload';
 import { PublishCDCard } from '@/components/PublishCDCard';
 import { RSVPButton } from '@/components/RSVPButton';
 import { OrganizerTools } from '@/components/OrganizerTools';
@@ -27,7 +26,6 @@ import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { useMyMatch } from '@/hooks/useMyMatch';
 import { useAddressDMs } from '@/hooks/useAddressDMs';
 import { useSenderStatus } from '@/hooks/useSenderStatus';
-import { usePostageReceipts } from '@/hooks/usePostageReceipts';
 import { toast } from '@/hooks/useToast';
 import { hexToBytes } from '@/lib/utils';
 import { nip19 } from 'nostr-tools';
@@ -70,11 +68,6 @@ const Account = () => {
   );
 
   const { data: senderPosted } = useSenderStatus(match?.receivingFrom ?? []);
-
-  const { data: postageReceipts } = usePostageReceipts(
-    match?.receivingFrom ?? [],
-    anonPubkey,
-  );
 
   const { nostr } = useNostr();
   const [myAddress, setMyAddress] = useState('');
@@ -205,16 +198,6 @@ const Account = () => {
                           <AnonZapButton anonPubkey={senderAnonPubkey} label={`Burner ${nip19.npubEncode(senderAnonPubkey).slice(5, 13)}`} />
                         </div>
                       </div>
-                      {postageReceipts?.[senderAnonPubkey] && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground font-medium">📬 Proof of postage:</p>
-                          <img
-                            src={postageReceipts[senderAnonPubkey]}
-                            alt="Postage receipt"
-                            className="rounded-lg w-full max-h-48 object-contain bg-muted"
-                          />
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -239,13 +222,6 @@ const Account = () => {
                           <div className="space-y-1">
                             <p className="text-xs text-green-600 font-medium">✓ Address received — post their CD here:</p>
                             <pre className="text-sm whitespace-pre-wrap bg-muted rounded p-2">{address}</pre>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-xs text-muted-foreground">Proof of postage</p>
-                            <PostageReceiptUpload
-                              recipientAnonPubkey={recipientAnonPubkey}
-                              anonNsecHex={anonNsecHex ?? ''}
-                            />
                           </div>
                         </div>
                       ) : (
