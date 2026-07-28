@@ -51,6 +51,7 @@ export function useMyMatch() {
       return latest;
     },
     enabled: !!anonPubkey && !!anonNsecHex && !!ORGANIZER_PUBKEY,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60000,
+    refetchInterval: 60000,
   });
 }
