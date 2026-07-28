@@ -46,12 +46,6 @@ export const BLOCKED_PUBKEYS = new Set([
 export const SWAP_STATUS_EVENT_ID = 'd22c6e22231865a341dd9e8111737245b0575a5a95e24793972c17f00292e9b5';
 export const REACTION_CD_POSTED = '📬';
 
-// kind 31928: sender publishes postage cost for a specific recipient.
-//   signed by sender's anon keypair
-//   d-tag: recipientAnonPubkey
-//   content: cost string e.g. "£2.50"
-export const KIND_POSTAGE_COST = 31928;
-
 // Kind 31555: GammaMarkets product review (NIP-99 extension).
 //   d-tag: "a:30402:<seller-pubkey>:<CD_LISTING_D_TAG>"
 //   rating tag: ["rating", "<0.00-1.00>", "thumb"] — 0=1★, 0.25=2★, 0.5=3★, 0.75=4★, 1=5★

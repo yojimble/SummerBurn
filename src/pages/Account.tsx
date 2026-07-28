@@ -25,6 +25,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useAnonIdentity } from '@/hooks/useAnonIdentity';
 import { useMyMatch } from '@/hooks/useMyMatch';
 import { useAddressDMs } from '@/hooks/useAddressDMs';
+import { useSentAddresses } from '@/hooks/useSentAddresses';
 import { useSenderStatus } from '@/hooks/useSenderStatus';
 import { toast } from '@/hooks/useToast';
 import { hexToBytes } from '@/lib/utils';
@@ -68,29 +69,34 @@ const Account = () => {
   );
 
   const { data: senderPosted } = useSenderStatus(match?.receivingFrom ?? []);
+  const { data: sentAddressRecipients, refetch: refetchSentAddresses } = useSentAddresses(anonPubkey, anonNsecHex);
 
   const { nostr } = useNostr();
   const [myAddress, setMyAddress] = useState('');
-  const [addressSent, setAddressSent] = useState(false);
   const [sendingAddress, setSendingAddress] = useState(false);
 
+  const addressSent = !!match?.receivingFrom.length &&
+    match.receivingFrom.every((recipient) => sentAddressRecipients?.has(recipient));
+
   const handleSendAddress = async () => {
-    if (!anonNsecHex || !match?.receivingFrom.length || !myAddress.trim()) return;
+    if (!anonNsecHex || !anonPubkey || !match?.receivingFrom.length || !myAddress.trim()) return;
     setSendingAddress(true);
     try {
       const privkeyBytes = hexToBytes(anonNsecHex);
       const pool = new SimplePool();
       await Promise.all(match.receivingFrom.map(async (recipientAnonPubkey) => {
-        const wrap = wrapEvent(
-          { kind: 14, content: myAddress.trim(), tags: [['p', recipientAnonPubkey]], created_at: Math.floor(Date.now() / 1000) },
-          privkeyBytes,
-          recipientAnonPubkey,
-        );
-        await Promise.any(pool.publish(DM_RELAYS, wrap));
+        const rumor = { kind: 14 as const, content: myAddress.trim(), tags: [['p', recipientAnonPubkey]], created_at: Math.floor(Date.now() / 1000) };
+        const wrap = wrapEvent(rumor, privkeyBytes, recipientAnonPubkey);
+        // Also wrap a copy to ourselves so we can later verify from relays that this was sent.
+        const selfCopy = wrapEvent(rumor, privkeyBytes, anonPubkey);
+        await Promise.all([
+          Promise.any(pool.publish(DM_RELAYS, wrap)),
+          Promise.any(pool.publish(DM_RELAYS, selfCopy)),
+        ]);
       }));
       pool.close(DM_RELAYS);
-      setAddressSent(true);
       setMyAddress('');
+      await refetchSentAddresses();
       toast({ title: '📬 Address sent!' });
     } catch {
       toast({ title: 'Failed to send', description: 'Please try again.' });
