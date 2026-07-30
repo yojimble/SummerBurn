@@ -42,9 +42,22 @@ export const BLOCKED_PUBKEYS = new Set([
 ]);
 
 // Organiser's "Summer Burn is live!" post — participants react to this with
-// 📬 (CDs posted) using Kind 7 reactions.
+// 📬 (CDs posted) using Kind 7 reactions (NIP-25). Per NIP-25 the `p` tag is
+// reserved for the pubkey of the event being reacted to (the organiser), so
+// which CD partner a reaction covers is tracked in a non-standard `dispatch`
+// tag instead, letting dispatch be tracked per-CD rather than all-three-at-once.
 export const SWAP_STATUS_EVENT_ID = 'd22c6e22231865a341dd9e8111737245b0575a5a95e24793972c17f00292e9b5';
 export const REACTION_CD_POSTED = '📬';
+export const DISPATCH_TAG = 'dispatch';
+
+// True if a CD-posted reaction's tags cover the given recipient — either it
+// names them via a `dispatch` tag, or it predates per-recipient tracking (no
+// `dispatch` tag at all), in which case it meant "all three CDs posted".
+export function reactionCoversRecipient(tags: string[][], recipientAnonPubkey: string): boolean {
+  const dispatchTags = tags.filter((t) => t[0] === DISPATCH_TAG).map((t) => t[1]);
+  if (!dispatchTags.length) return true;
+  return dispatchTags.includes(recipientAnonPubkey);
+}
 
 // Kind 31555: GammaMarkets product review (NIP-99 extension).
 //   d-tag: "a:30402:<seller-pubkey>:<CD_LISTING_D_TAG>"

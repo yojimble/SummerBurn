@@ -9,6 +9,7 @@ import { ChevronDown } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { AnonIdentityCard } from '@/components/AnonIdentityCard';
 import { CDPostedButton } from '@/components/CDPostedButton';
+import { ShareCDsButton } from '@/components/ShareCDsButton';
 import { AnonZapButton } from '@/components/AnonZapButton';
 import { PublishCDCard } from '@/components/PublishCDCard';
 import { RSVPButton } from '@/components/RSVPButton';
@@ -27,6 +28,7 @@ import { useMyMatch } from '@/hooks/useMyMatch';
 import { useAddressDMs } from '@/hooks/useAddressDMs';
 import { useSentAddresses } from '@/hooks/useSentAddresses';
 import { useSenderStatus } from '@/hooks/useSenderStatus';
+import { useMyPostedStatus } from '@/hooks/useMyPostedStatus';
 import { toast } from '@/hooks/useToast';
 import { hexToBytes } from '@/lib/utils';
 import { nip19 } from 'nostr-tools';
@@ -68,7 +70,8 @@ const Account = () => {
     anonNsecHex,
   );
 
-  const { data: senderPosted } = useSenderStatus(match?.receivingFrom ?? []);
+  const { data: senderPosted } = useSenderStatus(match?.receivingFrom ?? [], anonPubkey);
+  const { data: myPosted } = useMyPostedStatus(match?.sendingTo ?? [], anonPubkey);
   const { data: sentAddressRecipients, refetch: refetchSentAddresses } = useSentAddresses(anonPubkey, anonNsecHex);
 
   const { nostr } = useNostr();
@@ -218,6 +221,7 @@ const Account = () => {
                   <Skeleton className="h-24 w-full" />
                 ) : match.sendingTo.map((recipientAnonPubkey) => {
                   const address = addressDMs?.[recipientAnonPubkey];
+                  const label = `Burner ${nip19.npubEncode(recipientAnonPubkey).slice(5, 13)}`;
                   return (
                     <div key={recipientAnonPubkey} className="rounded-lg border p-3 space-y-2">
                       <p className="text-sm font-medium">
@@ -229,6 +233,7 @@ const Account = () => {
                             <p className="text-xs text-green-600 font-medium">✓ Address received — post their CD here:</p>
                             <pre className="text-sm whitespace-pre-wrap bg-muted rounded p-2">{address}</pre>
                           </div>
+                          <CDPostedButton recipientAnonPubkey={recipientAnonPubkey} label={label} />
                         </div>
                       ) : (
                         <p className="text-xs text-muted-foreground italic">
@@ -238,20 +243,14 @@ const Account = () => {
                     </div>
                   );
                 })}
+                {!!match.sendingTo.length && match.sendingTo.every((r) => myPosted?.has(r)) && (
+                  <div className="pt-1">
+                    <ShareCDsButton />
+                  </div>
+                )}
               </div>
             </div>
           ) : null}
-        </CollapsibleCard>
-
-        {/* CD Dispatch */}
-        <CollapsibleCard title="CD Dispatch" defaultOpen={false}>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Once you've posted all three CDs, mark them as sent. Try to get them in the post
-              within two weeks of July 21st.
-            </p>
-            <CDPostedButton />
-          </div>
         </CollapsibleCard>
 
         {/* Publish CD listing */}
